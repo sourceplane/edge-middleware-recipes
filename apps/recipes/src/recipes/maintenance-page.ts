@@ -4,8 +4,8 @@
 // Upstream reads `isInMaintenanceMode` from Edge Config through the
 // GLOBAL_CONFIG connection string. Here the flag is the MAINTENANCE_MODE var
 // in wrangler.jsonc (per environment); a flag that has to flip without a
-// deploy belongs in a KV namespace read the same way (see design.md). A
-// missing var reproduces the upstream's "missing config" dialog.
+// deploy belongs in a KV namespace read the same way. A missing var
+// reproduces the upstream's "missing config" dialog.
 import { Hono } from "hono";
 import { html } from "hono/html";
 import type { AppEnv } from "../env";

@@ -1,4 +1,5 @@
 import { html } from "hono/html";
+import { SITE_NAME, SOURCE_URL } from "../site";
 
 export type Html = ReturnType<typeof html>;
 
@@ -47,7 +48,7 @@ export function page(title: string, body: Html, slug?: string): Html {
   <body>
     <main>${body}</main>
     <footer>
-      <a href="/">← all recipes</a>${slug ? html` · upstream: <a href="${UPSTREAM}/${slug}">vercel/examples/edge-middleware/${slug}</a>` : ""}
+      <a href="/">← ${SITE_NAME}</a>${slug ? html` · upstream: <a href="${UPSTREAM}/${slug}">vercel/examples/edge-middleware/${slug}</a>` : ""} · <a href="${SOURCE_URL}">source</a>
     </footer>
   </body>
 </html>`;

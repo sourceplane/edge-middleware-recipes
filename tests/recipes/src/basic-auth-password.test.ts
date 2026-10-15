@@ -18,6 +18,21 @@ describe("basic-auth-password", () => {
     expect(wrong.status).toBe(401);
   });
 
+  it("says how to set the pair, and lets nobody through, while the secrets are unset", async () => {
+    for (const unset of [env(), env({ BASIC_AUTH_USER: "4dmin" }), env({ BASIC_AUTH_PASSWORD: "testpwd123" })]) {
+      const res = await (await app()).request(
+        "/basic-auth-password",
+        { headers: { authorization: `Basic ${btoa("undefined:undefined")}` } },
+        unset,
+      );
+      expect(res.status).toBe(503);
+      const body = await res.text();
+      expect(body).toContain("Incomplete Secrets Setup");
+      expect(body).toContain("orun secrets set BASIC_AUTH_USER");
+      expect(body).not.toContain("Password-protected page demo");
+    }
+  });
+
   it("lets the right user:password through", async () => {
     const res = await (await app()).request(
       "/basic-auth-password",

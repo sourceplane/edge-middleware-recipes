@@ -5,18 +5,58 @@ Vercel's [Edge Middleware examples](https://github.com/vercel/examples/tree/main
 as **one Cloudflare Worker of recipes**: each `middleware.ts` becomes a module
 under `apps/recipes/src/recipes/` with its behaviour intact, mounted by a
 [Hono](https://hono.dev) router under its own path, with the demo pages it
-rewrites to and a test that proves the upstream behaviour. Around it is the
-repository shape of the [Cirrus baseline](https://github.com/sourceplane/cirrus-baseline):
-an [Orun](https://github.com/sourceplane/orun) intent, one component per
-deployable, a credential-free check lane as the merge gate, and an Orun lane
-that turns on once the product is linked to a workspace.
+rewrites to and a test that proves the upstream behaviour — and packaged as
+an **Orun baseline**: one command takes a new product from nothing to live on
+stage and prod, in its own repository, under its own name, in ONE landing.
 
 The middleware logic is the upstream's wherever it is plain web-standard code,
 comments included. What changes is the Vercel-only primitive underneath —
 `geolocation(req)` is `request.cf`, Edge Config is a var, Upstash is the
 Workers Rate Limiting binding, `NextResponse.rewrite` is an in-process
-dispatch. See [`specs/epics/edge-middleware-recipes`](specs/epics/edge-middleware-recipes/README.md)
-for the design (the full primitive map), the milestones and the as-built status.
+dispatch. What the baseline adds is everything needed to make a copy of it
+somebody else's — built the way
+[cirrus-baseline](https://github.com/sourceplane/cirrus-baseline) is (its
+v22 one-landing shape). See [`specs/epics/edge-middleware-recipes`](specs/epics/edge-middleware-recipes/README.md)
+for the design (the full primitive map), the milestones and the as-built
+status.
+
+## Instantiating a product
+
+```bash
+git clone --depth 1 --branch <baseline-tag> https://github.com/sourceplane/edge-middleware-recipes
+cd edge-middleware-recipes
+orun new --blueprint repo-blueprint.yaml --out ~/products/acme-recipes --run-hooks --resume \
+  --set reponame=acme-recipes --set productname="Acme Recipes" --set productdomain=acme.dev \
+  --set githuborg=acme-inc --set subdomain=<workers-dev-subdomain>
+```
+
+Or, once the platform's registry lists it, from the Orun console (Baselines →
+`edge-middleware-recipes` → Build). Two phases — `01-product` (the
+repository, then the whole product in one pull request, deployed to stage and
+prod by one convergence and smoke-tested) and `02-docs` (the live deployment
+recorded, the promotion gate put back). **[BOOTSTRAP.md](BOOTSTRAP.md)** is
+the operator guide; [docs/phases/](docs/phases/README.md) has a page per
+phase.
+
+The new repository receives the **product only** — the Worker, its tests,
+its CI, its tooling, a README of its own and its operating contract —
+renamed throughout to the product's name, repository and Cloudflare Worker.
+None of this repository's machinery ships. The product deploys and serves
+every recipe with no secret but the two the platform brokers; the basic-auth
+recipe answers a setup page until its owner sets `BASIC_AUTH_USER` /
+`BASIC_AUTH_PASSWORD` (`orun secrets set`, pushed by the next deploy).
+
+| What makes it a baseline | Where |
+|---|---|
+| The console card (inputs, secrets, programme) | `blueprint.yaml` |
+| The build document (modules, phases, hooks) | `repo-blueprint.yaml` |
+| This tree's identity, and the bootstrap's task contracts | `.baseline/` |
+| The rename engine (the product-name seam is `apps/recipes/src/site.ts`) | `tooling/rebrand/rebrand.mjs` |
+| The bootstrap's helpers (deferrals, redeploy marker, work-tree strip) | `tooling/bootstrap/` |
+| The deployment-record renderer | `hooks/render-deployment-docs.sh` |
+| The product's README and context pack | `.baseline/product/README.md`, `ai/context/` |
+| The baseline's tests: contract, leak, offline bootstrap, end to end | `testing/`, `.github/workflows/baseline.yml` |
+| Cutting a `baseline-vN` tag | `.github/workflows/tag.yml` |
 
 ## The recipes
 
@@ -42,6 +82,7 @@ for the design (the full primitive map), the milestones and the as-built status.
 
 | Surface | Where |
 |---|---|
+| The product's name and source link | `apps/recipes/src/site.ts` |
 | The Worker — `/` index, one module per recipe | `apps/recipes/src/index.ts`, `apps/recipes/src/recipes/<name>.ts` |
 | The Edge Middleware verbs on a Worker (`rewrite`, `geolocation`, `ipAddress`, `userAgent`) | `apps/recipes/src/lib/middleware.ts` |
 | Upstream data kept as shipped (country table, 50,000 redirects + generated Bloom filter, dictionaries, buckets) | `apps/recipes/src/recipes/<name>/` |
@@ -57,7 +98,7 @@ for the design (the full primitive map), the milestones and the as-built status.
 pnpm install
 pnpm typecheck
 pnpm lint
-pnpm test             # 25 tests: every recipe's upstream behaviour, in-process (no workerd)
+pnpm test             # 28 tests: every recipe's upstream behaviour and the site identity, in-process (no workerd)
 pnpm build            # wrangler deploy --dry-run → apps/recipes/dist (the bundle, no upload)
 ```
 
@@ -92,25 +133,26 @@ its `app.use(<matcher>, …)` is the upstream's `export const config = { matcher
 | Edge Config (`isInMaintenanceMode`) | The `MAINTENANCE_MODE` var per environment (a flag that must flip without a deploy: Workers KV) |
 | `@upstash/ratelimit` over Vercel KV | The Workers Rate Limiting binding (`ratelimits` in `wrangler.jsonc`) |
 | `vc dev` · `vc build` · `vc deploy` | `wrangler dev` · `wrangler deploy --dry-run --outdir dist` · `wrangler deploy --env <stage\|prod>` |
-| Deploy on push | Orun deploys `edge-middleware-recipes-recipes-{stage,prod}` on merge to `main` (`apps/recipes/component.yaml`) |
+| Deploy on push | Orun deploys `<repo>-recipes-{stage,prod}` on merge to `main` (`apps/recipes/component.yaml`) |
+| "Deploy with Vercel" (clone the template) | `orun new --blueprint repo-blueprint.yaml` — a new repository, branded, deployed |
 
-## Deploying
+## CI
 
-`.github/workflows/checks.yml` runs install, typecheck, lint, test and build on
-every push and pull request. `ci.yml` is the Orun deployment pipeline: set
-`execution.state.workspace` in `intent.yaml` to this product's Orun workspace
-(`orun cloud link`), connect a Cloudflare account to that workspace, and set
-the `ORUN_CI` repository variable to `true`. From then on a merge to `main`
-deploys the Worker to `stage`, then `prod`.
+| Workflow | What it runs | Ships to a product |
+|---|---|---|
+| `checks.yml` | install, wire fixtures, typecheck, lint, test, build — every PR (not pushes: on main, `ci.yml` must be the only run a commit has, because the bootstrap's convergence watch takes the newest one) | yes |
+| `ci.yml` | the Orun pipeline: `orun plan --changed`, then one job per lane; deploys stage → prod on merge. It plans nothing while `intent.yaml` names the placeholder workspace `ws_CHANGE_ME`, as this repository does | yes |
+| `baseline.yml` | the baseline's own tiers: contract tests, the blueprint read by the pinned orun, the leak gate, the offline bootstrap, the product built, dry-deployed and served | no |
+| `tag.yml` | cuts a `baseline-vN` tag (manual) | no |
 
-Before the first deploy, set the basic-auth pair for each environment — the
-deploy lane does not create secrets:
+## Deploying this repository by hand
 
-```bash
-cd apps/recipes
-pnpm exec wrangler secret put BASIC_AUTH_USER --env stage
-pnpm exec wrangler secret put BASIC_AUTH_PASSWORD --env stage   # and --env prod
-```
-
-The rate limiting binding needs no resource: wrangler creates the namespace
-from `wrangler.jsonc` on deploy (one `namespace_id` per environment).
+A product built from the baseline is deployed by its own bootstrap. To deploy
+THIS repository instead: set `execution.state.workspace` in `intent.yaml` to
+an Orun workspace (`orun cloud link`) with a Cloudflare connection, and
+`ci.yml` turns on — a merge to `main` deploys the Worker to `stage`, then
+`prod`. The basic-auth pair is optional: until it is set per environment
+(`orun secrets set BASIC_AUTH_USER --env stage`, or `wrangler secret put`),
+that recipe answers its setup page. The rate limiting binding needs no
+resource: wrangler creates the namespace from `wrangler.jsonc` on deploy (one
+`namespace_id` per environment).

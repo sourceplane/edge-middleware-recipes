@@ -8,7 +8,7 @@ metadata:
   key: EM
 spec:
   title: "Vercel's Edge Middleware examples as one Cloudflare Worker of recipes"
-  summary: "Thirteen of Vercel's Edge Middleware examples — geolocation, i18n, basic auth, rate limiting, A/B testing, a maintenance page, cookies, response and request headers, query filtering, a JSON response, user-agent rendering and Bloom-filter redirects — each a Next.js app whose point is its middleware.ts, ported as recipes in one Cloudflare Worker: a Hono router mounts each recipe under its own path with the upstream middleware logic intact, the Vercel-only primitive replaced by Cloudflare's (request.cf, vars and secrets, the Rate Limiting binding, an in-process rewrite), the pages it rewrites to, and a test per recipe. Inside the Cirrus baseline's repository conventions: Orun intent and components, credential-free checks, a gated Orun CI, one epic per repository."
+  summary: "Thirteen of Vercel's Edge Middleware examples — geolocation, i18n, basic auth, rate limiting, A/B testing, a maintenance page, cookies, response and request headers, query filtering, a JSON response, user-agent rendering and Bloom-filter redirects — each a Next.js app whose point is its middleware.ts, ported as recipes in one Cloudflare Worker: a Hono router mounts each recipe under its own path with the upstream middleware logic intact, the Vercel-only primitive replaced by Cloudflare's (request.cf, vars and secrets, the Rate Limiting binding, an in-process rewrite), the pages it rewrites to, and a test per recipe. Inside the Cirrus baseline's repository conventions: Orun intent and components, credential-free checks, a gated Orun CI, one epic per repository — and an Orun baseline that instantiates it as somebody's own product in one landing (EM3)."
   state: completed
   milestones:
     - name: "EM0 — the spec"
@@ -27,3 +27,10 @@ spec:
         - "the README says how to run, test, preview and deploy it through Orun, and what each recipe does"
         - "the as-built status records every departure from the upstream examples"
       tasks: [EM-3]
+    - name: "EM3 — a baseline"
+      exitCriteria:
+        - "blueprint.yaml (the console card) and repo-blueprint.yaml (the build) take a new product from nothing to live on stage and prod in ONE landing (01-product), then record it (02-docs)"
+        - "a product built from it carries the product only, renamed throughout to its own name, repository and Worker, and no shipped file names a factory path"
+        - "a fresh product deploys and serves every recipe with no secret the platform cannot broker; the basic-auth recipe says how to set its pair instead of challenging forever"
+        - "Baseline CI is green: contract tests, the blueprint read by the pinned orun, the leak gate, the offline bootstrap and the end-to-end tier"
+      tasks: [EM-4]

@@ -8,6 +8,7 @@ the code departed from `design.md` or from the upstream examples.
 | EM0 — the spec | ✅ Shipped | [#1](https://github.com/sourceplane/edge-middleware-recipes/pull/1) |
 | EM1 — the recipes on Workers | ✅ Shipped | [#2](https://github.com/sourceplane/edge-middleware-recipes/pull/2) |
 | EM2 — ready to instantiate | ✅ Shipped | [#3](https://github.com/sourceplane/edge-middleware-recipes/pull/3) |
+| EM3 — a baseline | ✅ Shipped | this PR (EM-4) |
 
 ## Departures from the upstream examples
 
@@ -52,7 +53,62 @@ the code departed from `design.md` or from the upstream examples.
 | user-agent-based-rendering | `userAgent()` from `next/server` → `ua-parser-js` 1.0.41 (MIT; 2.x is AGPL) with `@types/ua-parser-js`. The rewrite path is `/user-agent-based-rendering/_viewport/<viewport>` (upstream writes `_viewport/…` without a leading slash). |
 | redirects-bloom-filter | The fetch to `/api/redirects` → an in-process `findRedirect()`; the route is still served. `redirects.json` (5.1 MB) is a dynamic import so esbuild keeps it lazy (`require_redirects()` on the first Bloom hit). The matcher excludes only `/api` (no `_next/*`, `favicon.ico` here). `generate-bloom-filter.ts` moved to `scripts/` with an import attribute and runs under `node --experimental-strip-types` instead of ts-node. `unstable_allowDynamic` is unnecessary: lodash's and reflect-metadata's `Function('return this')` are guarded and never run on workerd. `fromJSON(... as unknown as JSON)` in place of `as any`. |
 
-## Verified
+## Departures from the port (EM3)
+
+| What | Before | After | Why |
+|---|---|---|---|
+| The product's name | "Edge Middleware recipes" written into the index's `<title>` and heading; footer "← all recipes" | `SITE_NAME` / `SOURCE_URL` in `apps/recipes/src/site.ts`; the index's title and heading, every footer's home link and a `source` link | the seam the baseline's rename rewrites (design §8) |
+| basic-auth-password without its secrets | 401 to everyone, forever | rewrites to `/basic-auth-password/missing-config`: a 503 setup page naming `orun secrets set` and `wrangler secret put`; the protected page is never served | a fresh product has no pair and the platform cannot broker one (risks EM-F) |
+| `apps/recipes/component.yaml` | `smokeCommand` an `echo`; `orgName`/`owner`/`repo`, `dryRunCommand`/`deployCommand` (both `--env prod`) | a real smoke (`/` lists the recipes, `/json-response` answers); `optionalSecretEnv` + `runtimeSecrets` for the basic-auth pair; the unused parameters dropped | the composition dry-runs and deploys with `--env <environment>` itself and never read them; the `--env prod` in both misled |
+| `ci.yml` gate | `vars.ORUN_CI == 'true'` | skip only while `intent.yaml` names `ws_CHANGE_ME` | a bootstrap cannot set a repository variable |
+| `checks.yml` | push to main and pull requests | pull requests and `workflow_dispatch` | `orun.run/watch@v1` takes the newest run for a commit from ANY workflow |
+| stack-tectonic / orun lane pin | 0.18.2 / v2.78.0 | 0.19.0 / v2.78.4 | the fleet's baseline pins (first-deploy and smoke retries; job-scoped install) |
+| `intent.yaml` | terraform `parameterDefaults`; docs pages under `specs/`; no `infra/` or `packages/` root | none; docs pages `ai/context/*`; `infra/.gitkeep`, `packages/.gitkeep` | no terraform component; the pages must exist in a product; `orun validate` failed on the missing discovery roots |
+| `tasks/EM-1..3` | no `metadata` | `metadata.name` and `title` | `orun work check` (v2.79) refused them |
+| `maintenance-page.ts` | "(see design.md)" | the sentence alone | a product has no `design.md` |
+
+## Verified (EM3)
+
+- `orun new --status` reads the blueprint at v2.58.11 (the bootstrap floor),
+  v2.78.4 (the lane pin) and v2.79.0; `orun validate` passes at all three;
+  `orun work check` is clean (v2.79.0).
+- `testing/{manifest,phases,coverage,rebrand,retouch,bootstrap-defer}.test.sh`
+  green. `phases` holds the two-phase partition (every module placed by
+  `01-product`, `02-docs` hook-only, `01-product` the deploying phase) and the
+  hook order; a reordered hook fails it.
+- `testing/leak.test.sh` (v2.58.11 and v2.79.0): 84 files derived; nothing of
+  the factory, nothing local or built, no provenance prose, and none of the
+  79 shipped source files names a factory path (a planted
+  `testing/e2e.test.sh` reference fails it).
+- `testing/placement.test.sh` (v2.58.11 and v2.79.0; fixture "Sam's
+  Middleware & More" / `acme-inc/acme-recipes`): the whole blueprint placed
+  with the repo-scale gate; the offline bootstrap of BOTH phases, two
+  landings; rebrand `--verify` clean; re-tenanted, `work:` stripped,
+  promotion and dev lanes restored, record rendered; no tracked file names a
+  factory path; the product's own `orun plan --trigger github-push-main` for
+  the 01-product merge deploys `recipes` to stage and prod side by side, no
+  infra to order before it, structure check before the build, the product's
+  Worker, smoke and secret refs (brokered required, basic-auth optional);
+  `--resume` changes nothing.
+- `testing/e2e.test.sh` (v2.78.4 and v2.79.0): the 01-product landing passes
+  the Checks sequence (install, wire, typecheck, lint, 28 tests, build) with
+  the awkward name; the PR-trigger plan's stage lane — install,
+  `verify-worker-structure`, `wire-fixture`, `build-worker`,
+  `typecheck-worker`, `deploy-dry-run` — runs in a job tree staged from a
+  pristine checkout (job-scoped install, no build output); `wrangler dev
+  --env stage` serves it; the component's own smoke passes; the Rate
+  Limiting binding refuses the sixth request; the index, all thirteen
+  recipes, basic auth's setup page and a 404 answer as a fresh deploy serves
+  them; with the pair and the maintenance flag set (`--var`), the challenge,
+  a wrong pair, the right pair and the maintenance page.
+- The repository's own checks: `pnpm install --frozen-lockfile`,
+  `wire:fixture`, typecheck, lint, test (15 files, 28 tests), build.
+- Not verified: a live bootstrap against a workspace (risks EM-K) — the
+  repository created and linked, the brokered token, a real deploy, the
+  probes. No infra exists, so nothing is planned or validated at the
+  terraform level.
+
+## Verified (EM1–EM2)
 
 - Local: `pnpm typecheck`, `pnpm lint` (0 warnings), `pnpm test` (14 files,
   25 tests), `pnpm build` (`wrangler deploy --dry-run --outdir dist`,
