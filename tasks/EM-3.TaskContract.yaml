@@ -1,0 +1,15 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+spec:
+  goal: A reader can run, test, preview and deploy the recipes from the README; the as-built status is complete
+  affects:
+    - README.md
+    - specs/epics/edge-middleware-recipes/IMPLEMENTATION-STATUS.md
+    - specs/epics/edge-middleware-recipes/README.md
+    - specs/epics/edge-middleware-recipes/epic.yaml
+    - specs/epics/edge-middleware-recipes/implementation-plan.md
+    - specs/epics/README.md
+  doneWhen:
+    - README quick start is verified from a fresh clone
+    - IMPLEMENTATION-STATUS lists every PR and every departure, per recipe
+  gates: []
