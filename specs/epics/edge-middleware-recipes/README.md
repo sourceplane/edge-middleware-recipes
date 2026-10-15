@@ -8,7 +8,7 @@ What maps to what is the design's first table: `geolocation(req)` is `request.cf
 
 | Field | Value |
 |-------|-------|
-| Status | Draft — EM0 in review |
+| Status | ✅ Shipped — EM0–EM2 landed (#1, #2, #3) |
 | Cluster | **EM** (EM0–EM2) |
 | Owner(s) | `apps/recipes` (the Worker) · `tests/recipes` (the in-process request tests) |
 | Builds on | `cirrus-baseline` conventions (intent, components, `checks.yml` gate, gated `ci.yml`) and the `cloudflare-worker-turbo` composition its workers deploy with — no bounded context of the fleet is needed |
@@ -16,7 +16,7 @@ What maps to what is the design's first table: `geolocation(req)` is `request.cf
 | Changes | Ports the thirteen `middleware.ts` (and the libs and data beside them) into one Worker; the Next pages become Hono routes rendering `hono/html`; Vercel-only helpers are replaced per the mapping |
 | Decisions locked | (1) One Worker, one repository, one epic — not thirteen Next apps on OpenNext and not thirteen Workers. (2) Hono as the router, one module per recipe on its own base path; `NextResponse.rewrite` is an in-process re-dispatch to that router. (3) The rate limiter is the Workers Rate Limiting binding (GA 2025-09), not a Durable Object: it matches the upstream's 5-per-10-s per-key rule, runs under `wrangler dev`, and the upstream only reads `success`. (4) The maintenance flag is a var per environment; the basic-auth pair is a Worker secret. (5) `wrangler.jsonc` is committed, not rendered — nothing carries a resource id. (6) No infra root. |
 | Gate | EM1 is the first user-visible rung (the index and every recipe serve from a Worker). |
-| Shipped as | — |
+| Shipped as | `main` after [#3](https://github.com/sourceplane/edge-middleware-recipes/pull/3); verified locally under `wrangler dev` and the `--env prod` dry run, deploy gated until a workspace is linked |
 
 ## Read order
 
