@@ -1,0 +1,28 @@
+{
+  "name": "@app/recipes",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src scripts",
+    "countries": "node scripts/countries.mjs",
+    "generate-bloom-filter": "node --experimental-strip-types scripts/generate-bloom-filter.ts"
+  },
+  "dependencies": {
+    "bloom-filters": "^3.0.1",
+    "hono": "^4.13.0",
+    "ua-parser-js": "^1.0.40"
+  },
+  "devDependencies": {
+    "@app/eslint-config": "workspace:*",
+    "@app/tsconfig": "workspace:*",
+    "@cloudflare/workers-types": "^5.20261006.1",
+    "@types/ua-parser-js": "^0.7.39",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.151.0"
+  }
+}
