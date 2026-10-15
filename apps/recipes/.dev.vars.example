@@ -1,0 +1,7 @@
+# Local Worker secrets for `wrangler dev`. Copy to .dev.vars (git-ignored).
+# In stage/prod these are Worker secrets (`wrangler secret put <NAME> --env <env>`).
+#
+# basic-auth-password: the upstream example hard-codes these two values in its
+# middleware.ts and prints them on the protected page; here they are secrets.
+BASIC_AUTH_USER=4dmin
+BASIC_AUTH_PASSWORD=testpwd123

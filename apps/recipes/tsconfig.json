@@ -1,0 +1,9 @@
+{
+  "extends": "../../tooling/tsconfig/worker.json",
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.json"],
+  "exclude": ["node_modules", "dist"]
+}

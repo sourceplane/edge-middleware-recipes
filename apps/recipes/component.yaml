@@ -1,0 +1,61 @@
+apiVersion: sourceplane.io/v1
+kind: Component
+metadata:
+  name: recipes
+  description: The Edge Middleware recipes (one plain Cloudflare Worker, Hono-routed, per environment)
+spec:
+  type: cloudflare-worker-turbo
+  lifecycle: production
+  owner: platform
+  domain: recipes
+  path: apps/recipes
+  subscribe:
+    environments:
+      - name: dev
+        profile: verify
+      - name: stage
+        profile: verify
+        profileRules:
+          - profile: deploy
+            when:
+              triggerRef: github-push-main
+      - name: prod
+        profile: verify
+        profileRules:
+          - profile: deploy
+            when:
+              triggerRef: github-push-main
+  parameters:
+    nodeVersion: "22"
+    pnpmVersion: "10.12.1"
+
+    workspaceDir: ../..
+    appDir: .
+
+    orgName: sourceplane
+    owner: sourceplane
+    repo: edge-middleware-recipes
+
+    turboFilter: "@app/recipes"
+    # Committed, not rendered: the Worker's only bindings are vars and a rate
+    # limiting binding, neither of which carries a resource id to wire. Per-env
+    # names come from `--env`: edge-middleware-recipes-recipes-{stage,prod}.
+    # BASIC_AUTH_USER / BASIC_AUTH_PASSWORD are Worker secrets set per
+    # environment with `wrangler secret put` (see .dev.vars.example).
+    wranglerConfig: wrangler.jsonc
+
+    installCommand: pnpm install --frozen-lockfile
+    buildCommand: pnpm exec turbo run build --filter=@app/recipes
+    typecheckCommand: pnpm exec turbo run typecheck --filter=@app/recipes
+
+    dryRunCommand: pnpm exec wrangler deploy --dry-run --config wrangler.jsonc --env prod
+    deployCommand: pnpm exec wrangler deploy --config wrangler.jsonc --env prod
+
+    preDeployCommand: "echo 'No pre-deploy step configured.'"
+    migrationCommand: "echo 'No migrations configured.'"
+    smokeCommand: "echo 'No smoke test configured.'"
+  labels:
+    team: platform
+    layer: runtime
+    surface: api
+    runtime: cloudflare
