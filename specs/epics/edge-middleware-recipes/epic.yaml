@@ -9,7 +9,7 @@ metadata:
 spec:
   title: "Vercel's Edge Middleware examples as one Cloudflare Worker of recipes"
   summary: "Thirteen of Vercel's Edge Middleware examples — geolocation, i18n, basic auth, rate limiting, A/B testing, a maintenance page, cookies, response and request headers, query filtering, a JSON response, user-agent rendering and Bloom-filter redirects — each a Next.js app whose point is its middleware.ts, ported as recipes in one Cloudflare Worker: a Hono router mounts each recipe under its own path with the upstream middleware logic intact, the Vercel-only primitive replaced by Cloudflare's (request.cf, vars and secrets, the Rate Limiting binding, an in-process rewrite), the pages it rewrites to, and a test per recipe. Inside the Cirrus baseline's repository conventions: Orun intent and components, credential-free checks, a gated Orun CI, one epic per repository."
-  state: proposed
+  state: completed
   milestones:
     - name: "EM0 — the spec"
       exitCriteria:

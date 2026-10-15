@@ -3,7 +3,7 @@
 Milestones land in order; each task is one pull request on an
 `orun/EM-n-<slug>` branch with an `Orun-Task: EM-n` trailer.
 
-## EM0 — the spec
+## EM0 — the spec ✅
 
 This doc set, `epic.yaml` and the task contracts, merged to `main`.
 
@@ -11,7 +11,7 @@ This doc set, `epic.yaml` and the task contracts, merged to `main`.
 - the five documents and `epic.yaml` are on `main`
 - `tasks/EM-1.TaskContract.yaml`, `EM-2`, `EM-3` exist
 
-## EM1 — the recipes on Workers
+## EM1 — the recipes on Workers ✅
 
 `apps/recipes` is the thirteen `middleware.ts` as recipe modules behind one
 Hono router, with the upstream libs and data beside them, the pages they
@@ -24,7 +24,7 @@ recipe in-process with `app.request()`.
 - `wrangler deploy --dry-run --env prod` (what the Orun verify lane runs) resolves `ENVIRONMENT=prod`, `MAINTENANCE_MODE` and the `RATE_LIMITER` binding
 - `wrangler dev` answers `/` with the index and each recipe as the upstream does: geolocation from `request.cf`; `Accept-Language: fr` → the French dictionary; no `Authorization` → 401 + `WWW-Authenticate`, the right pair → 200; the sixth request in 10 s → 302 to `/blocked.html`; `/home` → a bucket page + `Set-Cookie`; `/big-promo` → the promo (flag off), the maintenance page (flag on); `beta=true` → the beta page; `x-modified-edge: true`; the modified request headers printed; `?a=b&allowed=test` → 307 to `?allowed=test`; `{"message":"hello world!"}`; a mobile User-Agent → the mobile page; `/blog/should-redirect-to-google` → 307 to Google, a path not in the table → the blog page
 
-## EM2 — ready to instantiate
+## EM2 — ready to instantiate ✅
 
 The README explains the port, lists the recipes, and says how to run, test,
 preview and deploy; `IMPLEMENTATION-STATUS.md` records what shipped and every
