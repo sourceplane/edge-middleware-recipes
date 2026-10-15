@@ -9,6 +9,15 @@ spec:
   owner: platform
   domain: recipes
   path: apps/recipes
+  # The basic-auth recipe's pair, owner-seeded rather than brokered: no
+  # provider holds it, so nothing mints it. Best-effort references — an
+  # unseeded key is skipped when the deploy job resolves its secrets, and the
+  # secrets-live step pushes only the keys that have a value — so this block is
+  # inert until somebody runs `orun secrets set BASIC_AUTH_USER --env <env>`
+  # (and BASIC_AUTH_PASSWORD). Until then the recipe answers its setup page.
+  optionalSecretEnv:
+    BASIC_AUTH_USER: "secret://ws_CHANGE_ME/edge-middleware-recipes/{{ .environment }}/BASIC_AUTH_USER"
+    BASIC_AUTH_PASSWORD: "secret://ws_CHANGE_ME/edge-middleware-recipes/{{ .environment }}/BASIC_AUTH_PASSWORD"
   subscribe:
     environments:
       - name: dev
@@ -32,28 +41,30 @@ spec:
     workspaceDir: ../..
     appDir: .
 
-    orgName: sourceplane
-    owner: sourceplane
-    repo: edge-middleware-recipes
-
     turboFilter: "@app/recipes"
     # Committed, not rendered: the Worker's only bindings are vars and a rate
-    # limiting binding, neither of which carries a resource id to wire. Per-env
-    # names come from `--env`: edge-middleware-recipes-recipes-{stage,prod}.
-    # BASIC_AUTH_USER / BASIC_AUTH_PASSWORD are Worker secrets set per
-    # environment with `wrangler secret put` (see .dev.vars.example).
+    # limiting binding, neither of which carries a resource id to wire. The
+    # composition deploys (and dry-runs) with `--env <environment>`, so the
+    # Worker is edge-middleware-recipes-recipes-{stage,prod}.
     wranglerConfig: wrangler.jsonc
+
+    # Pushed with `wrangler secret bulk` after each deploy, from the
+    # optionalSecretEnv values above that are seeded (none, on a fresh product).
+    runtimeSecrets: "BASIC_AUTH_USER,BASIC_AUTH_PASSWORD"
 
     installCommand: pnpm install --frozen-lockfile
     buildCommand: pnpm exec turbo run build --filter=@app/recipes
     typecheckCommand: pnpm exec turbo run typecheck --filter=@app/recipes
 
-    dryRunCommand: pnpm exec wrangler deploy --dry-run --config wrangler.jsonc --env prod
-    deployCommand: pnpm exec wrangler deploy --config wrangler.jsonc --env prod
-
     preDeployCommand: "echo 'No pre-deploy step configured.'"
     migrationCommand: "echo 'No migrations configured.'"
-    smokeCommand: "echo 'No smoke test configured.'"
+    # Smoke: the index lists the recipes (a link, not the product's name, which
+    # is the owner's to change and HTML-escaped when it carries `&` or `'`) and
+    # a recipe answers from the middleware itself. The Worker's URL is the
+    # environment's workers.dev one (${ORUN_ENVIRONMENT} the runner sets for
+    # every step); DEPLOYED_URL overrides it. Each response is buffered before
+    # grep so an early match cannot SIGPIPE curl.
+    smokeCommand: "base=\"${DEPLOYED_URL:-https://edge-middleware-recipes-recipes-${ORUN_ENVIRONMENT}.your-workers-subdomain.workers.dev}\" && html=$(curl -sfL \"${base}/\") && echo \"${html}\" | grep -q 'href=\"/geolocation\"' && json=$(curl -sfL \"${base}/json-response\") && echo \"${json}\" | grep -q '\"message\":\"hello world!\"'"
   labels:
     team: platform
     layer: runtime

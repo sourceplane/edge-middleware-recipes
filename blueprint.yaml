@@ -1,0 +1,143 @@
+# The edge-middleware-recipes card: what the console's Blueprints page renders
+# and the platform's bootstrap door consumes.
+#
+# THIS FILE IS NOT THE BUILD. `spec.bootstrap.blueprint` names the build
+# document — `repo-blueprint.yaml`, whose phases a runner places. This card is
+# what an operator reads and fills in before pressing Build, and
+# `testing/manifest.test.sh` compares every list below to the document that
+# actually does the thing, not to a copy of itself.
+#
+# The division of labour with the registry is strict: the registry (orun-cloud
+# `infra/baselines-registry/baselines.yaml`) owns identity and commerce — id,
+# visibility, tier, the pinned tag. This file owns the build contract. Neither
+# restates the other, which is why there is no `tag` here: this file is
+# fetched AT the tag the registry pins.
+apiVersion: orun.io/v1
+kind: Blueprint
+metadata:
+  name: edge-middleware-recipes
+  displayName: Edge Middleware Recipes — thirteen middleware recipes on one Cloudflare Worker
+  description: >
+    Vercel's Edge Middleware examples as a product of their own: geolocation,
+    i18n, basic auth, rate limiting, A/B testing, a maintenance page, cookies,
+    request and response headers, query filtering, a JSON response,
+    user-agent rendering and Bloom-filter redirects, each a recipe under its
+    own path on one Hono-routed Cloudflare Worker, with a test per recipe and
+    CI that deploys it to stage and prod on merge. One provider, one consent,
+    one token, one landing. Live in about eight minutes.
+  tags: [middleware, hono, workers, cloudflare, recipes]
+spec:
+  source:
+    repo: sourceplane/edge-middleware-recipes
+    # No `tag`. The registry pins it; this file is fetched at it.
+
+  # ── What the operator reads first ────────────────────────────────────────
+  overview:
+    lede: >
+      Thirteen Edge Middleware recipes on one Cloudflare Worker. Read one,
+      copy one, merge, and it is deployed.
+    architecture:
+      - layer: Edge
+        items: [recipes]
+      - layer: Recipes
+        items: ["13 middleware recipes", Rate Limiting binding, request.cf]
+      - layer: Delivery
+        items: [GitHub Actions, wrangler]
+    outcome:
+      - Live on stage and prod in one landing
+      - Every merge redeploys, smoke-tested
+      - A test per recipe, on every pull request
+
+  requires:
+    # Cloudflare is the only provider connection a bootstrap needs. GitHub
+    # arrives as the App installation plus the repo link, not as a
+    # connection row.
+    integrations: [github, cloudflare]
+    apiKeyRole: admin          # secret writes need the admin floor
+
+  # Every input is collected by the console: keys are lowercase (the
+  # platform's reader refuses anything else), every one carries the `pattern`
+  # its value is checked against before Continue, and a value the console
+  # already holds says so with `from`. repo-blueprint.yaml declares the same
+  # names; `repoPrivate`, `orunWorkspace` and `epicSlug` are build inputs with
+  # defaults (or filled from the build's workspace) and are not asked.
+  inputs:
+    - key: reponame
+      label: Repo name
+      pattern: "^[a-z][a-z0-9-]{1,38}$"
+      # The operator picked the repository; its name IS this value.
+      from: repo.name
+    - key: productname
+      label: Product name
+      pattern: "^[A-Za-z0-9][A-Za-z0-9 .,'&-]{1,48}$"
+      help: The name people see — the index page's heading and title, and every page's footer.
+      example: Acme Recipes
+    - key: productdomain
+      label: Product domain
+      pattern: "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$"
+      help: The domain the product will answer on. It does not need to exist — the Worker goes live on workers.dev first.
+      example: acme.dev
+    - key: githuborg
+      label: GitHub organisation
+      pattern: "^[A-Za-z0-9][A-Za-z0-9-]*$"
+      help: The GitHub org or user the product's repository is created under.
+      # DERIVED FROM THE CHOSEN REPOSITORY: its owner IS this value. Declared
+      # because repo-blueprint.yaml requires it — a build may declare more
+      # inputs than this card, but not require one nobody supplies.
+      from: repo.owner
+    - key: subdomain
+      label: workers.dev subdomain
+      pattern: "^[a-z0-9][a-z0-9-]{0,62}$"
+      help: The workers.dev subdomain of the Cloudflare account the Worker deploys into.
+      example: acme
+
+  # ── PREVIEW ONLY. repo-blueprint.yaml's `orun.integrations/reconcile@v1`
+  # hooks mint these, brokered, during 01-product. ──────────────────────────
+  # Transcribed from those hooks' own `keys:` and `template:` values, so
+  # testing/manifest.test.sh compares this list to the document that mints
+  # them. The console renders them read-only: no credential is ever typed,
+  # shown or stored. Keys that already exist are kept.
+  #
+  # NOT here: BASIC_AUTH_USER / BASIC_AUTH_PASSWORD, the basic-auth recipe's
+  # pair. No provider holds them, so the platform cannot broker them and the
+  # card does not ask for them. The product deploys and serves every recipe
+  # without them; the basic-auth one answers a setup page until its owner sets
+  # them (the product README's "Secrets").
+  secrets:
+    - key: CLOUDFLARE_API_TOKEN
+      provider: cloudflare
+      template: workers-deploy
+      why: Deploys the Worker (and pushes any runtime secret its owner seeds)
+    - key: CLOUDFLARE_ACCOUNT_ID
+      provider: cloudflare
+      template: account-id
+      why: Connection fact, not a secret
+      fact: true
+
+  # ── PREVIEW ONLY. repo-blueprint.yaml's run-level `hooks.preInstantiate`
+  # opens these — the epic, every milestone in this order, every task — before
+  # the first phase places. Idempotent by identity, so a re-run finds what it
+  # made before.
+  programme:
+    epicSlug: edge-middleware-recipes-baselining   # = repo-blueprint.yaml's `epicSlug` default
+    epicName: "Edge middleware recipes baselining — {productname}"
+    milestones:
+      # The whole product is one landing (01-product): the scaffold, the
+      # Worker and its tests are one pull request and one convergence.
+      - name: 01-product
+      - name: 02-docs
+
+  bootstrap:
+    # THE BUILD DOCUMENT. There is no umbrella workflow and no agent brief:
+    # every phase is declared in it and orun runs it.
+    blueprint: repo-blueprint.yaml
+    # Summed from the phases' expectedMinutes (6 + 2): one landing whose PR
+    # waits on Checks and `plan`, one convergence of two deploy lanes (stage
+    # and prod side by side, a wrangler bundle each — no framework build),
+    # then the record. An estimate until a bootstrap measures it.
+    expectedMinutes: 8
+    tokenChannel: ORUN_TOKEN_FILE   # how a runner hands over its refreshed token
+  verify:
+    urls:
+      - "https://{reponame}-recipes-{env}.{subdomain}.workers.dev"
+    envs: [stage, prod]

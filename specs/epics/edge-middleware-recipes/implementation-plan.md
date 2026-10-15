@@ -9,7 +9,7 @@ This doc set, `epic.yaml` and the task contracts, merged to `main`.
 
 **Done when**
 - the five documents and `epic.yaml` are on `main`
-- `tasks/EM-1.TaskContract.yaml`, `EM-2`, `EM-3` exist
+- `tasks/EM-1.TaskContract.yaml`, `EM-2`, `EM-3` exist (EM-4 joined with EM3)
 
 ## EM1 — the recipes on Workers ✅
 
@@ -34,10 +34,40 @@ departure from the upstream examples.
 - the README's quick start works from a fresh clone
 - the status file names the PRs and every departure (per recipe)
 
+## EM3 — a baseline (EM-4)
+
+`blueprint.yaml`, `repo-blueprint.yaml` (two phases: `01-product`, the whole
+product in one landing; `02-docs`, hook-only), `.baseline/` (identity, task
+contracts, the product's README), `tooling/rebrand`, `tooling/bootstrap`,
+`hooks/render-deployment-docs.sh`, `ai/context/`, `docs/phases/`,
+`BOOTSTRAP.md`, `testing/`, `baseline.yml` and `tag.yml` (design §8); the
+product-name seam `apps/recipes/src/site.ts`; the basic-auth recipe's setup
+page and its owner-seeded secrets; `checks.yml` on pull requests only and
+`ci.yml`'s `linked` gate.
+
+**Done when**
+- orun at the bootstrap floor (v2.58.11), at the lane pin (v2.78.4) and at
+  v2.79.0 reads `repo-blueprint.yaml`, and `testing/manifest.test.sh` holds
+  the card to it
+- `Baseline CI` is green: the contract tests, the leak gate, the offline
+  bootstrap (`testing/placement.test.sh`) and the end-to-end tier
+  (`testing/e2e.test.sh`)
+- the status file records what is proven offline and what only a live
+  bootstrap can prove
+
+## After EM3 (outside this repository)
+
+1. Cut `baseline-v1` with `tag.yml` from the merged `main`.
+2. Register the row in orun-cloud's `infra/baselines-registry/baselines.yaml`
+   (unlisted) with the card vendored at the tag.
+3. Bootstrap one product from the tag against a workspace; record its
+   timings; then flip the row to public with a page on orunbase.com.
+
 ## Sequencing note
 
 EM1 needs nothing but EM0's contracts. EM2 is documentation over EM1's
-verified build and can land the same day. Deploying to a Cloudflare account
+verified build and can land the same day. EM3 packages EM1's Worker as a
+baseline. Deploying to a Cloudflare account
 is not a milestone here: it is the Orun lane (`ci.yml`) that turns on when
 `intent.yaml`'s workspace is set and the `ORUN_CI` variable is `true`; the
 basic-auth secrets are set per environment with `wrangler secret put` before

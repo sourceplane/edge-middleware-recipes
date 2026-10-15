@@ -1,0 +1,34 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+metadata:
+  name: EM-4
+  title: "A baseline"
+spec:
+  goal: The repository is an Orun baseline — a card and a build document that take a new product from nothing to live on stage and prod in one landing, branded as its own, with gates that prove it offline
+  affects:
+    - blueprint.yaml
+    - repo-blueprint.yaml
+    - BOOTSTRAP.md
+    - README.md
+    - .baseline/**
+    - tooling/rebrand/**
+    - tooling/bootstrap/**
+    - hooks/**
+    - testing/**
+    - docs/phases/**
+    - ai/context/**
+    - .github/workflows/**
+    - intent.yaml
+    - infra/**
+    - packages/**
+    - apps/recipes/**
+    - tests/recipes/**
+    - specs/**
+    - tasks/**
+  doneWhen:
+    - orun (the bootstrap floor, the lane pin and the current release) reads repo-blueprint.yaml, and the card agrees with it
+    - the leak gate, the offline bootstrap and the end-to-end tier are green in Baseline CI
+    - a fresh product deploys and serves every recipe with no secret the platform cannot broker
+    - the as-built status records the departures and what is not yet proven live
+  gates:
+    - checks

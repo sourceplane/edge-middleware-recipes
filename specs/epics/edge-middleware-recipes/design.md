@@ -93,7 +93,8 @@ framework build step.
 A KV-backed flag for the maintenance page (the recipe shows the read; the
 `cloudflare-kv` root + wiring template is the factory's shape for it), a
 Durable Object limiter (exact and global, at a round trip per request — the
-upstream rule does not need it), custom domains, Next's `_next/*` and
+upstream rule does not need it), custom domains (an owner's step after the
+bootstrap; §8), Next's `_next/*` and
 `favicon.ico` matcher exclusions (there are none here), and the upstream pages'
 styling (`@vercel/examples-ui`, Tailwind, React).
 
@@ -110,3 +111,52 @@ read and copy, not a product you deploy. Also rejected: one Worker per recipe
 (thirteen env sections and components for the same reason), and a Durable
 Object rate limiter (correct, but a migration and a round trip the native
 binding makes unnecessary for a 5-per-10-s rule that only reads `success`).
+
+## 8. The baseline (EM3)
+
+The repository instantiates new products the way
+[cirrus-baseline](https://github.com/sourceplane/cirrus-baseline) does at
+`baseline-v22`: a console card (`blueprint.yaml`) the platform renders, a
+build document (`repo-blueprint.yaml`) `orun new` runs, and a rename engine
+that makes the copy somebody else's. What a small baseline carries — the
+`.baseline/` identity and contracts, the product README, the bootstrap
+helpers, the deployment-record hook, `ai/context`, the `testing/` suite, the
+`baseline.yml`/`tag.yml` lanes and `ci.yml`'s `linked` gate — is
+portfolio-starter-kit's (`baseline-v2`); HOW the build runs is cirrus v22's:
+the whole product in ONE landing.
+
+| Cirrus v22 | Here | Why the difference |
+|---|---|---|
+| `01-product` (everything, one PR, one convergence), `07-domain` (optional), `08-docs` | `01-product`, `02-docs` | one Worker, no data plane, no domain phase |
+| `dependsOn: cloudflare-d1` (enforced on main) so the data plane deploys first; an `orun.secrets/exists@v1` await on `WIRING_*` | neither | no infra: the Worker's bindings are vars, a rate limiting binding `wrangler deploy` creates, and owner-seeded secrets — nothing carries a resource id, so nothing is wired and nothing must deploy first |
+| `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_D1_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | `CLOUDFLARE_API_TOKEN` (`workers-deploy`), `CLOUDFLARE_ACCOUNT_ID` (`account-id`) | the deploy profile's `secretBindings` are the only refs; no D1 |
+| POLAR_* as `optionalSecretEnv` + `runtimeSecrets` | `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD` the same way | the pair is the owner's, not a provider's: the card cannot broker it, so it never asks; seeded later, `secrets-live` pushes it on the next deploy |
+| task contracts in `tasks/` | `.baseline/tasks/` | `tasks/` is this repository's own work tree (`intent.yaml` `work:`), where an unkeyed contract is an error |
+| ships its own README | ships `.baseline/product/README.md` | this README is about the baseline |
+| — | `work-tree.mjs` strips `work:` from the product's intent | a product has no `specs/` or `tasks/` |
+| stack-tectonic 0.20.0 | 0.19.0 | the fleet's site baselines pin it (Next 16's Turbopack cannot build through 0.20.0's lane-linked `node_modules`); this Worker would build either way, and its deploy lane is one job, so the shared install saves nothing |
+| rebrand rules for a SaaS | the source link, the `SITE_NAME` seam (`apps/recipes/src/site.ts`), the domain, the subdomain, the Worker name `<slug>-recipes`, the secret refs, the repo slug | the identity this tree carries |
+
+**The product-name seam** is `apps/recipes/src/site.ts`: `SITE_NAME` is the
+index page's `<title>` and heading and every page's footer; `SOURCE_URL` is
+the footer's source link. The rename writes the name with `JSON.stringify`,
+so any name the card admits — apostrophes and ampersands included — stays a
+valid string, and `hono/html` escapes it on the page.
+
+**No secret the platform cannot broker.** The basic-auth recipe's pair was
+a Worker secret the deploy lane never sets, so a fresh product would have
+answered 401 to everyone, forever, with nothing saying why. Without the pair
+the recipe now rewrites to a setup page (503, after maintenance-page's
+missing-config dialog) that says how to set it — `orun secrets set …` and the
+next deploy, or `wrangler secret put` — and never serves the protected page.
+With it, the upstream behaviour is unchanged.
+
+**The e2e runs the lane as the plan renders it.** The PR-trigger plan carries
+every non-mutating step of the stage lane (the deploy profile has no
+`deploy-dry-run`): install, `verify-worker-structure` (package.json and the
+committed `wrangler.jsonc`, BEFORE the build), `wire-fixture` (a no-op: not
+templated), `build-worker`, `typecheck-worker`, `deploy-dry-run`.
+`testing/e2e.test.sh` runs exactly those, in the job tree orun stages from a
+pristine checkout, then serves the Worker with `wrangler dev --env stage` and
+reads every recipe — and the Rate Limiting binding, which only workerd
+answers.
