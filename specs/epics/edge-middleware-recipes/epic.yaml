@@ -1,0 +1,29 @@
+# The epic's declaration. metadata.name equals the directory name; metadata.key
+# is the task-key prefix this epic reserves (EM → EM-1, EM-2, …). Owner, target
+# date and health are the platform's — never written here.
+apiVersion: orun.io/v1
+kind: Epic
+metadata:
+  name: edge-middleware-recipes
+  key: EM
+spec:
+  title: "Vercel's Edge Middleware examples as one Cloudflare Worker of recipes"
+  summary: "Thirteen of Vercel's Edge Middleware examples — geolocation, i18n, basic auth, rate limiting, A/B testing, a maintenance page, cookies, response and request headers, query filtering, a JSON response, user-agent rendering and Bloom-filter redirects — each a Next.js app whose point is its middleware.ts, ported as recipes in one Cloudflare Worker: a Hono router mounts each recipe under its own path with the upstream middleware logic intact, the Vercel-only primitive replaced by Cloudflare's (request.cf, vars and secrets, the Rate Limiting binding, an in-process rewrite), the pages it rewrites to, and a test per recipe. Inside the Cirrus baseline's repository conventions: Orun intent and components, credential-free checks, a gated Orun CI, one epic per repository."
+  state: proposed
+  milestones:
+    - name: "EM0 — the spec"
+      exitCriteria:
+        - "the doc set and the task contracts are on main"
+      tasks: [EM-1]
+    - name: "EM1 — the recipes on Workers"
+      exitCriteria:
+        - "apps/recipes serves / (the index) and the thirteen recipes under their own paths from one plain Worker bundled by wrangler"
+        - "every recipe reproduces its upstream middleware.ts behaviour, and tests/recipes proves it with app.request()"
+        - "`pnpm typecheck`, `pnpm lint`, `pnpm test` and `pnpm build` are green on main (Checks)"
+        - "`wrangler dev` answers each recipe's demo route as the upstream does (headers, cookies, User-Agent, the rate limit, the redirects)"
+      tasks: [EM-2]
+    - name: "EM2 — ready to instantiate"
+      exitCriteria:
+        - "the README says how to run, test, preview and deploy it through Orun, and what each recipe does"
+        - "the as-built status records every departure from the upstream examples"
+      tasks: [EM-3]

@@ -1,0 +1,16 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+spec:
+  goal: The thirteen upstream middlewares run as recipes in one plain Cloudflare Worker with green checks
+  affects:
+    - apps/recipes
+    - tests/recipes
+    - pnpm-lock.yaml
+    - package.json
+    - turbo.json
+  doneWhen:
+    - pnpm typecheck, lint, test and build are green in Checks
+    - wrangler dev answers / with the index and every recipe's demo route as the upstream does
+    - every recipe has a test in tests/recipes that proves its upstream behaviour
+  gates:
+    - checks
