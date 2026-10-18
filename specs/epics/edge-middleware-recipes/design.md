@@ -75,7 +75,7 @@ apps/recipes                 the Worker: src/index.ts (the index page, mounts ev
 tests/recipes                vitest: one file per recipe, app.request() in-process (a fake rate limiter, a cf object on the Request)
 tooling/*                    shared tsconfig / eslint / wrangler wiring renderer (unused here: nothing to wire)
 intent.yaml                  environments dev (verify) · stage · prod; `work:` points at specs/epics and tasks
-.github/workflows            checks.yml (merge gate) · ci.yml (Orun lanes, gated by the ORUN_CI variable)
+.github/workflows            checks.yml (merge gate) · ci.yml (Orun lanes; plans nothing while intent.yaml names ws_CHANGE_ME)
 ```
 
 ## 5. The build
