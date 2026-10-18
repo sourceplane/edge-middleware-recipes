@@ -18,3 +18,8 @@ Built by the turbo pipeline from `apps/recipes` and deployed with wrangler.
 ## Variables
 
 `ENVIRONMENT`, `MAINTENANCE_MODE` — overridden per environment (`dev`, `prod`, `stage`).
+
+## Secrets resolved by the lane (names only)
+
+- `BASIC_AUTH_PASSWORD` (optional)
+- `BASIC_AUTH_USER` (optional)
