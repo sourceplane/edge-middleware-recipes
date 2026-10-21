@@ -7,6 +7,6 @@ folder is the adoption; the merge creates the epic in the workspace.
 
 | Epic | Cluster | Status | What it is |
 |------|---------|--------|------------|
-| [`edge-middleware-recipes/`](./edge-middleware-recipes/) | **EM** | ✅ Shipped | Vercel's Edge Middleware examples, each ported as a Cloudflare Worker recipe with its behaviour intact — and an Orun baseline that instantiates it in one landing (EM3) |
+| [`edge-middleware-recipes/`](./edge-middleware-recipes/) | **EM** | ✅ Shipped (`baseline-v1`); live bootstrap pending | Vercel's Edge Middleware examples, each ported as a Cloudflare Worker recipe with its behaviour intact — and an Orun baseline that instantiates it in one landing (EM3) |
 
 As-built ≠ intent: what shipped lives in each epic's `IMPLEMENTATION-STATUS.md`.

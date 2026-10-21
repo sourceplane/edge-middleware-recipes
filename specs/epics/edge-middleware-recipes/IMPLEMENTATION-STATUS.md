@@ -8,7 +8,8 @@ the code departed from `design.md` or from the upstream examples.
 | EM0 — the spec | ✅ Shipped | [#1](https://github.com/sourceplane/edge-middleware-recipes/pull/1) |
 | EM1 — the recipes on Workers | ✅ Shipped | [#2](https://github.com/sourceplane/edge-middleware-recipes/pull/2) |
 | EM2 — ready to instantiate | ✅ Shipped | [#3](https://github.com/sourceplane/edge-middleware-recipes/pull/3) |
-| EM3 — a baseline | ✅ Shipped | this PR (EM-4) |
+| EM3 — a baseline | ✅ Shipped | [#4](https://github.com/sourceplane/edge-middleware-recipes/pull/4) (EM-4), tagged `baseline-v1` |
+| EM4 — the cirrus standard | ✅ Shipped | EM-5 — on `main` after `baseline-v1`, not yet tagged |
 
 ## Departures from the upstream examples
 
@@ -66,6 +67,41 @@ the code departed from `design.md` or from the upstream examples.
 | `intent.yaml` | terraform `parameterDefaults`; docs pages under `specs/`; no `infra/` or `packages/` root | none; docs pages `ai/context/*`; `infra/.gitkeep`, `packages/.gitkeep` | no terraform component; the pages must exist in a product; `orun validate` failed on the missing discovery roots |
 | `tasks/EM-1..3` | no `metadata` | `metadata.name` and `title` | `orun work check` (v2.79) refused them |
 | `maintenance-page.ts` | "(see design.md)" | the sentence alone | a product has no `design.md` |
+
+## The cirrus standard (EM4)
+
+Nothing about the recipes changed. What changed is the baseline around them:
+
+| What | Before | After | Why |
+|---|---|---|---|
+| orun pin | `kiox.yaml` (v2.15.0) + `kiox.lock`, shipped to every product | gone; orun is pinned where it runs, the `orun-action` `version:` in each workflow | nothing ran the kiox pin, and it disagreed with the lanes (v2.78.4) |
+| `root-kiox`, `root-kiox-lock` modules | in `01-product` | removed (`testing/phases.test.sh` and the rebrand's skip list follow) | a product is placed with 88 files: 84 − 2 kiox + 6 docs pages |
+| component docs | none | `apps/recipes/docs/` and `tests/recipes/docs/` — `overview.md`, `architecture.md`, `runbook.md` | cirrus-baseline documents every component; the workspace Docs library renders `docs/` beside each `component.yaml` |
+| how the docs stay true | — | `tooling/catalog/gen-component-docs.py` derives them from the manifest, the Worker config, Terraform, migrations and package scripts; Baseline CI runs it with `--check` | a hand-written copy of a manifest drifts silently |
+| context pack | `operations.md`, `deployment.md` | plus `current.md`, `decisions.md`, `open-risks.md` | cirrus-baseline's shape; the three new pages are this repository's own and no module places them (the leak gate still allows exactly two) |
+| status | EM3 "this PR (EM-4)"; the epic README "EM3 lands with EM-4" | EM3 shipped and tagged `baseline-v1` | the tag existed; the documents had not caught up |
+| `ci.yml`'s gate in `design.md` §4 and the plan's sequencing note | "gated by the `ORUN_CI` variable" | plans nothing while `intent.yaml` names `ws_CHANGE_ME`; the basic-auth pair optional (its setup page until set) | EM3 replaced the variable; the documents still described it |
+
+## Verified (EM4)
+
+- `testing/{manifest,phases,coverage,rebrand,retouch,bootstrap-defer}.test.sh`
+  green; `gen-component-docs.py --check` green (2 components, 6 pages).
+- `orun new --status` at v2.58.11: `01-product` 88 files, `02-docs`
+  hook-only.
+- `testing/leak.test.sh` at v2.58.11: 88 files derived; ai/context still
+  exactly the two declared pages; 83 shipped files read, none points at a
+  factory path.
+- `testing/placement.test.sh` at v2.58.11: 88 files placed, both landings,
+  branded, re-tenanted; the product's own plan deploys `recipes` to stage
+  and prod side by side; `--resume` changes nothing.
+- `pnpm install --frozen-lockfile`, `wire:fixture` (the tree unchanged),
+  `typecheck`, `lint`, `test` (15 files, 28 tests), `build` green.
+- `testing/e2e.test.sh` at v2.78.4 green: the stage lane's six planned steps
+  in a staged job tree, `wrangler dev --env stage`, the component's own
+  smoke, the Rate Limiting binding, the index, all thirteen recipes and a
+  404; with the basic-auth pair and the maintenance flag set, the challenge,
+  a wrong pair, the right one and the maintenance page.
+- `orun task check EM-5` complete.
 
 ## Verified (EM3)
 
