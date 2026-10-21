@@ -73,6 +73,12 @@ recipes themselves changing.
 - **Status that agrees with the tags and the code.** EM3 is shipped and
   tagged; `design.md` and the sequencing note describe `ci.yml`'s gate as
   built (`ws_CHANGE_ME`), not the `ORUN_CI` variable it replaced.
+- **The subdomain from the Cloudflare connection (EM-6).** The card's
+  `subdomain` input declares `from: connection.cloudflare.workersSubdomain`,
+  as cirrus-baseline's does since baseline-v23: the bootstrap door fills it
+  from the connection the build is bound to, so the console asks for nothing
+  a typo could get wrong. `testing/manifest.test.sh` takes cirrus-baseline's
+  rule, which requires the provider in `spec.requires.integrations`.
 
 **Done when**
 - nothing outside this milestone's own record names kiox (`git grep -i
