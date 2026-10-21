@@ -53,7 +53,12 @@ inputs:
   subdomain:
     type: string
     default: "your-workers-subdomain"
-    description: The workers.dev subdomain of the Cloudflare account the product deploys into — its URLs, the deploy smoke, the probes.
+    description: >-
+      The workers.dev subdomain of the Cloudflare account the product deploys
+      into — its URLs, the deploy smoke, the probes. A console or
+      `--from bst_…` build gets it from the workspace's Cloudflare connection
+      (blueprint.yaml declares `from: connection.cloudflare.workersSubdomain`);
+      pass it with --set only for a hand-run build.
   repoPrivate:
     type: boolean
     default: true

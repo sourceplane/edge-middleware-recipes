@@ -21,8 +21,8 @@ infrastructure: nothing to provision, nothing to wire.
 
 | | |
 |---|---|
-| Latest tag | `baseline-v1` (EM3, [#4](https://github.com/sourceplane/edge-middleware-recipes/pull/4)) |
-| On `main` since | EM4 — the cirrus standard (no kiox, generated component docs, this context pack) |
+| Latest tag | `baseline-v2` (EM4 — the cirrus standard: no kiox, generated component docs, this context pack, and the workers.dev subdomain read from the Cloudflare connection instead of asked) |
+| Before it | `baseline-v1` (EM3, [#4](https://github.com/sourceplane/edge-middleware-recipes/pull/4)) |
 | Proven live | No. Everything short of the platform is proven offline in Baseline CI: the stage lane run in orun's staged job tree, `wrangler dev --env stage` serving every recipe, the Rate Limiting binding refusing the sixth request, the component's own smoke. No bootstrap from a tag has run against a workspace: the repository link, the brokered token, a real `wrangler deploy` and the probes are unproven (risk EM-K) |
 
 ## Where to read
@@ -37,6 +37,5 @@ infrastructure: nothing to provision, nothing to wire.
 
 ## Next
 
-1. Bootstrap one product from a tag against a workspace, and record its
-   timings (closes EM-K); then the registry row can go public.
-2. Cut the next `baseline-vN` with `tag.yml` so the registry can pin EM4.
+1. Bootstrap one product from `baseline-v2` against a workspace, and record
+   its timings (closes EM-K); then the registry row can go public.

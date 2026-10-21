@@ -9,7 +9,7 @@ the code departed from `design.md` or from the upstream examples.
 | EM1 — the recipes on Workers | ✅ Shipped | [#2](https://github.com/sourceplane/edge-middleware-recipes/pull/2) |
 | EM2 — ready to instantiate | ✅ Shipped | [#3](https://github.com/sourceplane/edge-middleware-recipes/pull/3) |
 | EM3 — a baseline | ✅ Shipped | [#4](https://github.com/sourceplane/edge-middleware-recipes/pull/4) (EM-4), tagged `baseline-v1` |
-| EM4 — the cirrus standard | ✅ Shipped | EM-5 — on `main` after `baseline-v1`, not yet tagged |
+| EM4 — the cirrus standard | ✅ Shipped | [#5](https://github.com/sourceplane/edge-middleware-recipes/pull/5) (EM-5), [#6](https://github.com/sourceplane/edge-middleware-recipes/pull/6) (EM-6), tagged `baseline-v2` |
 
 ## Departures from the upstream examples
 
@@ -81,6 +81,45 @@ Nothing about the recipes changed. What changed is the baseline around them:
 | context pack | `operations.md`, `deployment.md` | plus `current.md`, `decisions.md`, `open-risks.md` | cirrus-baseline's shape; the three new pages are this repository's own and no module places them (the leak gate still allows exactly two) |
 | status | EM3 "this PR (EM-4)"; the epic README "EM3 lands with EM-4" | EM3 shipped and tagged `baseline-v1` | the tag existed; the documents had not caught up |
 | `ci.yml`'s gate in `design.md` §4 and the plan's sequencing note | "gated by the `ORUN_CI` variable" | plans nothing while `intent.yaml` names `ws_CHANGE_ME`; the basic-auth pair optional (its setup page until set) | EM3 replaced the variable; the documents still described it |
+
+### The subdomain from the Cloudflare connection (EM-6)
+
+The card's `subdomain` input was typed by hand, though it belongs to the
+Cloudflare account the same way its id does and has exactly one right
+answer; a wrong value surfaced only after deploy, in the deploy's smoke and
+`01-product`'s probes. It now declares `from:
+connection.cloudflare.workersSubdomain`, as cirrus-baseline's card does since
+baseline-v23: the Cloudflare integration reads the subdomain at connect and on
+its hourly health check, the bootstrap door fills the input from the
+connection the build is bound to (the one `CLOUDFLARE_ACCOUNT_ID` and the
+deploy token come from), the console renders no field for it, and an account
+with no workers.dev subdomain is refused at the door. Nothing a product runs
+changes.
+
+- `blueprint.yaml`: the `from:` source and the reason, at the input; key,
+  label, pattern, help and example unchanged.
+- `testing/manifest.test.sh`: cirrus-baseline's rule, byte for byte — the
+  source is accepted, and a `connection.<provider>.…` source whose provider
+  `spec.requires.integrations` does not list fails (the card lists
+  `cloudflare`).
+- `repo-blueprint.yaml`, `BOOTSTRAP.md`, `docs/phases/README.md`: a console or
+  `--from bst_…` build reads it from the connection; only a hand-run build
+  passes `--set subdomain`. The default is unchanged.
+
+Verified:
+
+- `testing/{manifest,phases,coverage,rebrand,retouch,bootstrap-defer}.test.sh`
+  green; `gen-component-docs.py --check` green (2 components).
+- Mutation: `cloudflare` removed from `spec.requires.integrations` →
+  `manifest.test.sh` fails with exactly one finding, `inputs[subdomain].from
+  is 'connection.cloudflare.workersSubdomain' but spec.requires.integrations
+  does not list cloudflare`; restored, green.
+- `orun new --status` at v2.58.11: `01-product` pending (88 files),
+  `02-docs` hook-only. `testing/leak.test.sh` at v2.58.11: 88 files
+  derived; 83 shipped files read, none points at a factory path.
+- `testing/placement.test.sh` at v2.58.11: 88 files placed, both landings,
+  `--resume` changes nothing.
+- `orun task check EM-6` complete.
 
 ## Verified (EM4)
 
