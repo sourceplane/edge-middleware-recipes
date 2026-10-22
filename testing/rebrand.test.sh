@@ -82,6 +82,14 @@ check "an environment URL in the intent" \
 check "the placeholder domain is the product's domain, not a renamed slug" \
   "$acme" intent.yaml '      BASE_DOMAIN: edge-middleware-recipes.example.com' \
   '      BASE_DOMAIN: acme.dev'
+check "no domain given: the reserved placeholder, for an owner to replace later" \
+  '{"reponame":"acme-recipes","productname":"Acme Recipes","githuborg":"acme-inc","subdomain":"acme"}' \
+  intent.yaml '      BASE_DOMAIN: edge-middleware-recipes.example.com' \
+  '      BASE_DOMAIN: acme-recipes.example.com'
+check "an empty domain is no domain" \
+  '{"reponame":"acme-recipes","productname":"Acme Recipes","productdomain":""}' \
+  intent.yaml '      BASE_DOMAIN: edge-middleware-recipes.example.com' \
+  '      BASE_DOMAIN: acme-recipes.example.com'
 check "the repo slug" \
   "$acme" package.json '  "name": "edge-middleware-recipes",' \
   '  "name": "acme-recipes",'

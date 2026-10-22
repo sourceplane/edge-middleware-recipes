@@ -91,7 +91,6 @@ jobs:
             --out "$(mktemp -d)" \
             --set reponame=acme-recipes \
             --set "productname=Acme Recipes" \
-            --set productdomain=acme.dev \
             --set githuborg=acme-inc
       - name: the leak gate — what a product carries
         run: bash testing/leak.test.sh

@@ -39,7 +39,8 @@ There is no custom-domain phase. Attaching a domain to a Worker needs zone
 permissions the platform's brokered `workers-deploy` token does not carry, so
 it is an owner's step after the bootstrap — the product's README, "Custom
 domain", says how. No recipe builds absolute links to itself, so nothing in
-the code changes with it.
+the code changes with it; the repository names the domain only in
+`BASE_DOMAIN` in `intent.yaml`, which holds the placeholder until then.
 
 There is no infra either: the Worker's bindings are vars, a rate limiting
 binding `wrangler deploy` creates, and owner-seeded secrets. Nothing is
@@ -51,9 +52,15 @@ and `01-product`'s await has no secrets check.
 `01-product` takes the product's identity once and writes it into the repo
 (`.rebrand/values.json`); `02-docs` reads it back from the placed tree. But
 the blueprint's **required** inputs — `reponame`, `productname`,
-`productdomain`, `githuborg` — are validated before any phase runs, so they
-must be supplied on every invocation, single-phase ones included. A
-`--values` file is easier than repeating `--set`.
+`githuborg` — are validated before any phase runs, so they must be supplied
+on every invocation, single-phase ones included. A `--values` file is easier
+than repeating `--set`.
+
+- `productdomain` — NOT ASKED, default empty. The Worker goes live on
+  workers.dev; empty brands the reserved placeholder `<reponame>.example.com`
+  into `BASE_DOMAIN`, for an owner to replace when they attach a domain (the
+  product's README, "Custom domain"). Pass it only for a product that
+  already has its domain.
 
 - `subdomain` — the workers.dev subdomain of the Cloudflare account you
   deploy into. It is in every URL the phases probe and in the deploy's

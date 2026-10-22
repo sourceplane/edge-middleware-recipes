@@ -119,7 +119,7 @@ orun integrations list --org <ws> --json && orun cloud check --org <ws>
 | redeploy without a change | edit the last line of `apps/recipes/component.yaml` (`# orun: redeploy <reason> <stamp>`) and merge — it is a deploy trigger, nothing reads it |
 | turn on basic auth | `orun secrets set BASIC_AUTH_USER --env <env>` and `BASIC_AUTH_PASSWORD`, then redeploy (above) |
 | flip maintenance mode | `MAINTENANCE_MODE` in the environment's `vars` in `apps/recipes/wrangler.jsonc`, merge (a flag that must flip without a deploy belongs in a KV namespace) |
-| serve a custom domain | attach it to the Worker in Cloudflare (dashboard → Workers & Pages → the Worker → Settings → Domains & Routes); nothing in the code needs it |
+| serve a custom domain | attach it to the Worker in Cloudflare (dashboard → Workers & Pages → the Worker → Settings → Domains & Routes; README, "Custom domain"), then replace the placeholder `edge-middleware-recipes.example.com` in `intent.yaml`'s `BASE_DOMAIN` (dev, stage and prod) with it; nothing in the code needs it |
 | headless credentials | `ORUN_TOKEN` (workspace-scoped) + `GITHUB_TOKEN` |
 
 The deployment record is the bootstrap's `02-docs` phase. Re-running it (the

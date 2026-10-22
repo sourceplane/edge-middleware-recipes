@@ -10,6 +10,7 @@ the code departed from `design.md` or from the upstream examples.
 | EM2 — ready to instantiate | ✅ Shipped | [#3](https://github.com/sourceplane/edge-middleware-recipes/pull/3) |
 | EM3 — a baseline | ✅ Shipped | [#4](https://github.com/sourceplane/edge-middleware-recipes/pull/4) (EM-4), tagged `baseline-v1` |
 | EM4 — the cirrus standard | ✅ Shipped | [#5](https://github.com/sourceplane/edge-middleware-recipes/pull/5) (EM-5), [#6](https://github.com/sourceplane/edge-middleware-recipes/pull/6) (EM-6), tagged `baseline-v2` |
+| EM5 — the domain is set later | ✅ Shipped | [#7](https://github.com/sourceplane/edge-middleware-recipes/pull/7) (EM-7), tagged `baseline-v3` |
 
 ## Departures from the upstream examples
 
@@ -120,6 +121,54 @@ Verified:
 - `testing/placement.test.sh` at v2.58.11: 88 files placed, both landings,
   `--resume` changes nothing.
 - `orun task check EM-6` complete.
+
+## The domain is set later (EM5, EM-7)
+
+The console asked for the product's domain, with help text that said it did
+not need to exist — and nothing in the build needed one: the Worker answers
+on workers.dev from its first deploy, no recipe builds absolute links to
+itself or matches on its own host, and the one place the repository names
+the domain is `BASE_DOMAIN` in `intent.yaml`, for dev, stage and prod. A
+domain is an owner's step after the bootstrap (README, "Custom domain"), so
+the form no longer asks for it.
+
+- `blueprint.yaml` declares no `productdomain` input; the console's Product
+  step asks for the product's name alone.
+- `repo-blueprint.yaml`'s `productdomain` is optional, default empty. A
+  hand-run build may still pass `--set productdomain=` for a product that
+  already has its domain. Nothing else in the build reads it: no hook, probe
+  or `when:` names it, only the `.rebrand/values.json` template, which
+  writes `""`.
+- `rebrand.mjs` no longer requires it. Empty, it brands the reserved
+  placeholder `<reponame>.example.com` (RFC 2606 — never someone else's
+  domain) where the domain goes, so setting it later is replacing one
+  string; the product README and `ai/context/operations.md` say so.
+- `testing/fixtures/acme.json` carries no domain, so the leak gate, the
+  offline bootstrap and the e2e tier exercise exactly what a console build
+  supplies; `testing/rebrand.test.sh` pins the placeholder for an absent and
+  an empty domain (its "a leftover placeholder domain fails" check still
+  holds); `baseline.yml`'s blueprint read sets no domain.
+
+Nothing that needs a domain was removed — it waits for one.
+
+Verified:
+
+- `testing/{manifest,phases,coverage,rebrand,retouch,bootstrap-defer}.test.sh`
+  green (`rebrand.test.sh`: 31 checks, two of them new — and those two fail
+  against the old `rebrand.mjs`); `gen-component-docs.py --check` green (2
+  components).
+- `orun new --status` (v2.58.11) with no `productdomain`: `01-product`
+  pending (88 files). `testing/leak.test.sh` (v2.58.11): 88 files derived,
+  83 shipped files read, none points at a factory path.
+- `testing/placement.test.sh` (v2.58.11, as `baseline.yml` runs it): 88
+  files placed, both landings, branded, the product's own `orun plan` green,
+  `--resume` changes nothing.
+- The offline bootstrap's product, kept and read: `.rebrand/values.json` has
+  `"productdomain": ""`; `intent.yaml`'s `BASE_DOMAIN` is
+  `acme-recipes.example.com` in all three environments, and the README and
+  `ai/context/operations.md` name that same string (5 lines, 3 files);
+  `rebrand --verify` finds no leftover.
+- `orun task check EM-7` complete.
 
 ## Verified (EM4)
 
