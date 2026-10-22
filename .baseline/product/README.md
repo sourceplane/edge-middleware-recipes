@@ -135,4 +135,8 @@ own domain, add the domain to the Cloudflare account it deploys into and
 attach it to the Worker (dashboard → Workers & Pages →
 `edge-middleware-recipes-recipes-prod` → Settings → Domains & Routes → Add →
 Custom domain); do the same for stage with a subdomain if you want one. No
-recipe builds absolute links to itself, so nothing else changes.
+recipe builds absolute links to itself, so nothing else has to change; the
+repository names the domain in one place, `BASE_DOMAIN` in `intent.yaml`
+(dev, stage and prod), which the product was born with as the reserved
+placeholder `edge-middleware-recipes.example.com`. Replace it with your
+domain in the same change that records it.

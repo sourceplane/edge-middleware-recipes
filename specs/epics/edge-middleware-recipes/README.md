@@ -8,15 +8,15 @@ What maps to what is the design's first table: `geolocation(req)` is `request.cf
 
 | Field | Value |
 |-------|-------|
-| Status | ✅ EM0–EM4 shipped (#1–#6), EM3 tagged `baseline-v1`; EM4 (the cirrus standard, EM-5, and the subdomain read from the Cloudflare connection, EM-6) tagged `baseline-v2`. Not yet proven by a live bootstrap (risk EM-K) |
-| Cluster | **EM** (EM0–EM4) |
+| Status | ✅ EM0–EM5 shipped (#1–#7), EM3 tagged `baseline-v1`; EM4 (the cirrus standard, EM-5, and the subdomain read from the Cloudflare connection, EM-6) tagged `baseline-v2`; EM5 (the domain is set later, EM-7) tagged `baseline-v3`. Not yet proven by a live bootstrap (risk EM-K) |
+| Cluster | **EM** (EM0–EM5) |
 | Owner(s) | `apps/recipes` (the Worker) · `tests/recipes` (the in-process request tests) · the baseline machinery (`blueprint.yaml`, `repo-blueprint.yaml`, `.baseline/`, `tooling/{rebrand,bootstrap}`, `hooks/`, `testing/`) |
 | Builds on | `cirrus-baseline` conventions (intent, components, `checks.yml` gate, gated `ci.yml`) and the `cloudflare-worker-turbo` composition its workers deploy with — no bounded context of the fleet is needed |
 | Upstream | [vercel/examples `edge-middleware/*`](https://github.com/vercel/examples/tree/main/edge-middleware) at `ecee781` (2026-10-06): geolocation, i18n, basic-auth-password, rate-limit-any-framework, ab-testing-simple, maintenance-page, cookies, add-header, modify-request-header, query-params-filter, json-response, user-agent-based-rendering, redirects-bloom-filter |
 | Changes | Ports the thirteen `middleware.ts` (and the libs and data beside them) into one Worker; the Next pages become Hono routes rendering `hono/html`; Vercel-only helpers are replaced per the mapping |
 | Decisions locked | (1) One Worker, one repository, one epic — not thirteen Next apps on OpenNext and not thirteen Workers. (2) Hono as the router, one module per recipe on its own base path; `NextResponse.rewrite` is an in-process re-dispatch to that router. (3) The rate limiter is the Workers Rate Limiting binding (GA 2025-09), not a Durable Object: it matches the upstream's 5-per-10-s per-key rule, runs under `wrangler dev`, and the upstream only reads `success`. (4) The maintenance flag is a var per environment; the basic-auth pair is a Worker secret. (5) `wrangler.jsonc` is committed, not rendered — nothing carries a resource id. (6) No infra root. |
 | Gate | EM1 is the first user-visible rung (the index and every recipe serve from a Worker). |
-| Shipped as | `baseline-v1` ([#4](https://github.com/sourceplane/edge-middleware-recipes/pull/4)): EM3 made the repository an Orun baseline (cirrus v22's one-landing shape) — `01-product` builds a new product in one pull request, `02-docs` records it; then `baseline-v2` (EM4: [#5](https://github.com/sourceplane/edge-middleware-recipes/pull/5), [#6](https://github.com/sourceplane/edge-middleware-recipes/pull/6)). Proven offline (Baseline CI), deploy gated until a workspace is linked |
+| Shipped as | `baseline-v1` ([#4](https://github.com/sourceplane/edge-middleware-recipes/pull/4)): EM3 made the repository an Orun baseline (cirrus v22's one-landing shape) — `01-product` builds a new product in one pull request, `02-docs` records it; then `baseline-v2` (EM4: [#5](https://github.com/sourceplane/edge-middleware-recipes/pull/5), [#6](https://github.com/sourceplane/edge-middleware-recipes/pull/6)), then `baseline-v3` (EM5: [#7](https://github.com/sourceplane/edge-middleware-recipes/pull/7), no domain asked). Proven offline (Baseline CI), deploy gated until a workspace is linked |
 
 ## Read order
 
@@ -34,3 +34,4 @@ What maps to what is the design's first table: `geolocation(req)` is `request.cf
 | EM2 — ready to instantiate | README, as-built status | a reader can run, test, preview and deploy it, and knows every departure |
 | EM3 — a baseline | card, build document, rename, bootstrap tooling, tests | a new product goes from nothing to live in one landing; Baseline CI green |
 | EM4 — the cirrus standard | no kiox, generated component docs, the context pack, status that agrees with the tags and the code; the subdomain read from the Cloudflare connection | Baseline CI green with the docs check; the card asks for no subdomain |
+| EM5 — the domain is set later | the console asks for no domain; an empty `productdomain` brands the placeholder `<reponame>.example.com` for an owner to replace | Baseline CI green on a fixture with no domain |

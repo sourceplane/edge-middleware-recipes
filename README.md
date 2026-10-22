@@ -26,7 +26,7 @@ status.
 git clone --depth 1 --branch <baseline-tag> https://github.com/sourceplane/edge-middleware-recipes
 cd edge-middleware-recipes
 orun new --blueprint repo-blueprint.yaml --out ~/products/acme-recipes --run-hooks --resume \
-  --set reponame=acme-recipes --set productname="Acme Recipes" --set productdomain=acme.dev \
+  --set reponame=acme-recipes --set productname="Acme Recipes" \
   --set githuborg=acme-inc --set subdomain=<workers-dev-subdomain>
 ```
 
