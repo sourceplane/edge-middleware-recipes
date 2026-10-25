@@ -11,6 +11,12 @@
 # landing time, live, with nothing in this repository having looked wrong.
 # Moving one is a deliberate change, argued in the diff that edits both places.
 #
+# And the shape that keeps a bootstrap fast (orun >= v2.88.0, turso-starter
+# baseline-v8's): the run-level task set-up runs in the background, each
+# phase finds its task just before its landing, each landing checks its
+# commit here (`checks: local`), and the convergence watch reads every few
+# seconds.
+#
 # Adapted from sourceplane/cirrus-baseline's testing/phases.test.sh: the
 # narration rules and the hook-only rule are Cirrus's, unchanged.
 #
@@ -55,21 +61,25 @@ DEPLOYS = {"01-product"}
 # first stage so it is branded and landed; git before the rebrand, which reads
 # `git ls-files`; the re-tenant, work-tree strip and deferrals before the
 # re-stage and the residue sweep; the repository and its link before the
-# reconcile, which mints for the linked project, and all of it before the one
+# reconcile, which mints for the linked project; the task, then the one
 # landing; the watch before the probe.
-#   `secret-*` stands for the reconcile hooks, one per brokered key, in a run.
+#   No phase has a `pre` hook: the task is found in `post`, just before the
+# landing, so that everything before it runs beside the background task
+# set-up. The brokered keys are one `secrets` reconcile (checked below).
+# 02-docs awaits nothing: its render probes as it writes, and its landing
+# redeploys nothing.
 HOOK_ORDER = {
     "01-product": {
-        "pre": ["task"],
+        "pre": [],
         "post": ["retouch", "git-init", "git-stage", "rebrand", "orun-workspace",
                  "work-tree", "promotion", "dev-lanes", "git-restage", "rebrand-verify",
-                 "pnpm-lockfile", "repo", "link", "secret-*", "land"],
+                 "repo", "link", "secrets", "task", "land"],
         "await": ["converge", "verify"],
     },
     "02-docs": {
-        "pre": ["task"],
-        "post": ["promotion", "dev-lanes", "render", "land"],
-        "await": ["verify"],
+        "pre": [],
+        "post": ["promotion", "dev-lanes", "render", "task", "land"],
+        "await": [],
     },
 }
 # What each `run:` hook runs, by id — the script and the flag, so a hook that
@@ -81,7 +91,6 @@ HOOK_RUNS = {
     ("01-product", "promotion"): ("tooling/bootstrap/promotion.mjs", "--defer"),
     ("01-product", "dev-lanes"): ("tooling/bootstrap/dev-lanes.mjs", "--defer"),
     ("01-product", "rebrand-verify"): ("tooling/rebrand/rebrand.mjs", "--verify"),
-    ("01-product", "pnpm-lockfile"): ("pnpm", "--lockfile-only"),
     ("02-docs", "promotion"): ("tooling/bootstrap/promotion.mjs", "--restore"),
     ("02-docs", "dev-lanes"): ("tooling/bootstrap/dev-lanes.mjs", "--restore"),
     ("02-docs", "render"): ("hooks/render-deployment-docs.sh", ""),
@@ -89,12 +98,12 @@ HOOK_RUNS = {
 HOOK_USES = {
     ("01-product", "task"): "orun.task/ensure@v1",
     ("01-product", "repo"): "orun.repo/ensure@v1",
+    ("01-product", "secrets"): "orun.integrations/reconcile@v1",
     ("01-product", "land"): "orun.pr/land@v1",
     ("01-product", "converge"): "orun.run/watch@v1",
     ("01-product", "verify"): "orun.http/probe@v1",
     ("02-docs", "task"): "orun.task/ensure@v1",
     ("02-docs", "land"): "orun.pr/land@v1",
-    ("02-docs", "verify"): "orun.http/probe@v1",
 }
 
 by_name = {p["name"]: p for p in phases}
@@ -207,23 +216,17 @@ for p in phases:
                     f"repository does not have")
 
 # ── the hooks, in the order the bootstrap runs them ───────────────────────
-def collapse(ids):
-    out = []
-    for i in ids:
-        i = "secret-*" if (i or "").startswith("secret-") else i
-        if not out or out[-1] != i:
-            out.append(i)
-    return out
-
 for name, slots in HOOK_ORDER.items():
     p = by_name.get(name)
     if p is None:
         continue
     h = p.get("hooks") or {}
     for slot, want in slots.items():
-        now = collapse([x.get("id") for x in (h.get(slot) or [])])
+        now = [x.get("id") for x in (h.get(slot) or [])]
         if now != want:
-            bad(f"phase {name} {slot} hooks are {now}; the bootstrap runs {want}")
+            why = (" — a task found in `pre` waits for the background task set-up before "
+                   "the phase has done anything") if slot == "pre" else ""
+            bad(f"phase {name} {slot} hooks are {now}; the bootstrap runs {want}{why}")
     for x in [y for slot in ("pre", "post", "await") for y in (h.get(slot) or [])]:
         hid = x.get("id")
         if (name, hid) in HOOK_RUNS:
@@ -235,16 +238,34 @@ for name, slots in HOOK_ORDER.items():
             bad(f"phase {name} hook {hid} uses {x.get('uses')!r}, not {HOOK_USES[(name, hid)]}")
 
 # The brokered keys are minted where the product deploys: in 01-product, after
-# the link and before the landing, one reconcile per scope template.
-for p in phases:
-    for x in hooks_of(p):
-        if (x.get("uses") or "").startswith("orun.integrations/reconcile@"):
-            if p["name"] not in DEPLOYS:
-                bad(f"phase {p['name']} reconciles {x.get('with', {}).get('keys')} — the "
-                    f"brokered keys belong to the phase that deploys")
-            if len((x.get("with") or {}).get("keys") or []) != 1:
-                bad(f"hook {x.get('id')} mints {x.get('with', {}).get('keys')} — one key per "
-                    f"reconcile, so each key names its own scope template")
+# the link and before the landing, in ONE `secrets` reconcile per provider
+# (orun >= v2.87.0): each key under its own scope template, the connections and
+# the existing secrets read once per hook, the missing keys created side by
+# side. A reconcile reads one connection, so two providers would be two hooks
+# (`secrets-<provider>`); two hooks whose other parameters are the same are one
+# hook written twice.
+reconciles = [(p, x) for p in phases for x in hooks_of(p)
+              if (x.get("uses") or "").startswith("orun.integrations/reconcile@")]
+shared = {}
+for p, x in reconciles:
+    w = x.get("with") or {}
+    want = "secrets" if len(reconciles) == 1 else f"secrets-{w.get('provider')}"
+    if x.get("id") != want:
+        bad(f"reconcile hook {x.get('id')} mints from {w.get('provider')}; name it {want}")
+    if p["name"] not in DEPLOYS:
+        bad(f"phase {p['name']} reconciles {[i.get('key') for i in w.get('secrets') or []]} — the "
+            f"brokered keys belong to the phase that deploys")
+    if "keys" in w or "template" in w or not w.get("secrets"):
+        bad(f"hook {x.get('id')} does not use the `secrets: [{{key, template}}]` form — one "
+            f"template per hook reads the connections and the secrets once per key")
+    for item in w.get("secrets") or []:
+        if not item.get("key") or not item.get("template"):
+            bad(f"hook {x.get('id')} mints {item} — every key names its own scope template")
+    same = tuple(sorted((k, str(v)) for k, v in w.items() if k != "secrets"))
+    if same in shared:
+        bad(f"hooks {shared[same]} and {x.get('id')} take the same parameters {dict(same)} — "
+            f"merge them into one `secrets` list")
+    shared.setdefault(same, x.get("id"))
 
 # No infra component, no wiring secret to wait for: an `orun.secrets/exists@v1`
 # await exists exactly when the tree has a component under infra/.
@@ -257,6 +278,43 @@ for p in phases:
             f"infra component publishes any")
     if has_infra and p["name"] in DEPLOYS and not waits:
         bad(f"phase {p['name']} deploys infra and does not check its WIRING_* secrets")
+
+# ── THE FAST SHAPE (orun >= v2.88.0) ──────────────────────────────────────
+# The run-level list is the task set-up, all of it in the background: the
+# first phase's provider check, placement, rebrand, repository and secrets
+# run while it opens the epic, the milestones and the tasks.
+for h in run_hooks:
+    if not h.get("background"):
+        bad(f"hooks.preInstantiate {h.get('id')} is not `background: true` — the first phase "
+            f"waits for it before doing anything, though nothing before its landing reads it")
+# A `pre` hook on the task plane would wait for that background at once,
+# before the phase had placed a file — the old order, whatever its id.
+for p in phases:
+    for h in ((p.get("hooks") or {}).get("pre") or []):
+        if (h.get("uses") or "").startswith(("orun.task/", "orun.pr/")):
+            bad(f"phase {p['name']}'s pre hook {h.get('id')} uses {h['uses']}, which waits for the "
+                f"background task set-up — find the task in `post`, just before the landing")
+# Every landing checks its commit here and merges, instead of waiting ~25 s
+# for a runner to plan the tree this box just wrote.
+for p in phases:
+    for h in hooks_of(p):
+        if (h.get("uses") or "").startswith("orun.pr/land@") and (h.get("with") or {}).get("checks") != "local":
+            bad(f"phase {p['name']} lands with checks {(h.get('with') or {}).get('checks', 'ci')!r}, "
+                f"not 'local' — it waits for a runner to plan a tree that is here")
+# The convergence watch reads every few seconds, not the action's default 40.
+for p in phases:
+    for h in ((p.get("hooks") or {}).get("await") or []):
+        if (h.get("uses") or "").startswith("orun.run/watch@"):
+            every = (h.get("with") or {}).get("pollSeconds")
+            if not isinstance(every, int) or every > 10:
+                bad(f"phase {p['name']} watches its convergence every {every or 40} s; at most 10 — "
+                    f"the build goes on that much after the run is green")
+# The shipped lockfile is installed frozen by the lanes and by the baseline's
+# e2e tier; a hook re-resolving it is network for nothing.
+for p in phases:
+    for h in hooks_of(p):
+        if "--lockfile-only" in (h.get("run") or []):
+            bad(f"phase {p['name']} hook {h.get('id')} re-resolves the lockfile the baseline ships")
 
 # The deploying phase probes the Worker the card's verify URL names.
 card = yaml.safe_load((root / "blueprint.yaml").read_text())
@@ -332,8 +390,15 @@ def check_line(where, line, slot, hook_ids):
 for p in phases:
     n = p.get("narrate") or {}
     ids = {h.get("id") for h in hooks_of(p)}
+    awaits = bool((p.get("hooks") or {}).get("await"))
     for slot in ("start", "await", "done", "failed"):
         line = n.get(slot)
+        if slot == "await" and not awaits:
+            # A phase that waits on nothing never says its await line.
+            if line:
+                bad(f"phase {p['name']} declares narrate.await and has no await hooks — "
+                    f"nobody would ever read it")
+            continue
         if not line:
             bad(f"phase {p['name']} declares no narrate.{slot}")
             continue
@@ -365,6 +430,7 @@ narrated = sum(len(p.get("narrate") or {}) for p in phases)
 narrated += sum(1 for p in phases for h in hooks_of(p) if h.get("narrate"))
 print(f"   {len(phases)} phases, {placed_n} modules, {len(HOOK_ONLY)} hook-only — in execution order")
 print(f"   every hook in the order the bootstrap runs it; {', '.join(sorted(DEPLOYS))} deploys and probes the card's URLs")
+print(f"   the fast shape: the task set-up in the background, no `pre` hook, every landing checks: local, the watch every few seconds")
 print(f"   {narrated} authored narration lines, every reference resolving")
 PY
 

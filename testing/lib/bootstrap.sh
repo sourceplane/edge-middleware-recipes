@@ -14,8 +14,8 @@
 #     workspace;
 #   - `{{ .inputs.* }}` render from the fixture.
 # Everything else — the retouch marker, the rebrand, the re-tenant, the
-# work-tree strip, the deferrals and their restore, the lockfile, the
-# deployment-docs render — runs exactly as declared.
+# work-tree strip, the deferrals and their restore, the deployment-docs
+# render — runs exactly as declared.
 #
 # Needs: orun, node, pnpm, python3 (+PyYAML), git.
 

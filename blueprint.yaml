@@ -24,7 +24,7 @@ metadata:
     user-agent rendering and Bloom-filter redirects, each a recipe under its
     own path on one Hono-routed Cloudflare Worker, with a test per recipe and
     CI that deploys it to stage and prod on merge. One provider, one consent,
-    one token, one landing. Live in about eight minutes.
+    one token, one landing. Live in about six minutes.
   tags: [middleware, hono, workers, cloudflare, recipes]
 spec:
   source:
@@ -46,7 +46,7 @@ spec:
     outcome:
       - Live on stage and prod in one landing
       - Every merge redeploys, smoke-tested
-      - A test per recipe, on every pull request
+      - A test per recipe, run with pnpm test
 
   requires:
     # Cloudflare is the only provider connection a bootstrap needs. GitHub
@@ -104,12 +104,13 @@ spec:
       # the fix, before anything is created.
       from: connection.cloudflare.workersSubdomain
 
-  # ── PREVIEW ONLY. repo-blueprint.yaml's `orun.integrations/reconcile@v1`
-  # hooks mint these, brokered, during 01-product. ──────────────────────────
-  # Transcribed from those hooks' own `keys:` and `template:` values, so
-  # testing/manifest.test.sh compares this list to the document that mints
-  # them. The console renders them read-only: no credential is ever typed,
-  # shown or stored. Keys that already exist are kept.
+  # ── PREVIEW ONLY. repo-blueprint.yaml's one `orun.integrations/reconcile@v1`
+  # hook (`secrets`) mints these, brokered, during 01-product. ──────────────
+  # Transcribed from that hook's own `secrets:` list (each key and its
+  # `template:`), in its order, so testing/manifest.test.sh compares this
+  # list to the document that mints them. The console renders them
+  # read-only: no credential is ever typed, shown or stored. Keys that
+  # already exist are kept.
   #
   # NOT here: BASIC_AUTH_USER / BASIC_AUTH_PASSWORD, the basic-auth recipe's
   # pair. No provider holds them, so the platform cannot broker them and the
@@ -144,11 +145,13 @@ spec:
     # THE BUILD DOCUMENT. There is no umbrella workflow and no agent brief:
     # every phase is declared in it and orun runs it.
     blueprint: repo-blueprint.yaml
-    # Summed from the phases' expectedMinutes (6 + 2): one landing whose PR
-    # waits on Checks and `plan`, one convergence of two deploy lanes (stage
-    # and prod side by side, a wrangler bundle each — no framework build),
-    # then the record. An estimate until a bootstrap measures it.
-    expectedMinutes: 8
+    # Summed from the phases' expectedMinutes (5 + 1): one landing checked
+    # in the box (`orun validate` and `orun plan`, no runner waited for)
+    # while the task set-up runs in the background, one convergence of two
+    # deploy lanes (stage and prod side by side, a wrangler bundle each — no
+    # framework build), then the record, checked the same way. An estimate
+    # until a bootstrap of this shape measures it.
+    expectedMinutes: 6
     tokenChannel: ORUN_TOKEN_FILE   # how a runner hands over its refreshed token
   verify:
     urls:

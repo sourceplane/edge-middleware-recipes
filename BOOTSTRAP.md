@@ -11,20 +11,26 @@ not separate workflows. The console card the platform renders is
 brokered secrets and the programme, and `testing/manifest.test.sh` holds it
 to what the build document does.
 
-Target wall-clock: **about eight minutes** — an estimate summed from the
-phases until a bootstrap measures it: ONE landing that places and brands the
-whole product, whose pull request waits on Checks and `plan`; ONE
-convergence that deploys the Worker to stage and prod side by side (a
-wrangler bundle each, no framework build); then the deployment record.
+Target wall-clock: **about six minutes** — an estimate summed from the
+phases (5 + 1) until a bootstrap of this shape measures it. The shape: the
+task set-up in the background while ONE landing places and brands the whole
+product and is checked in the box (`orun validate` and `orun plan`, no
+runner waited for); ONE convergence that deploys the Worker to stage and
+prod side by side (a wrangler bundle each, no framework build); then the
+deployment record, checked the same way. orun v2.88.0's fast shape took
+about a minute out of turso-starter's measured build; the same minute is
+assumed here.
 
 ## 0. What you need
 
 - GitHub org access (repository creation) and a machine with `git`, `node`
   (≥ 22), `pnpm` (10.12.1), `python3` with PyYAML, `curl`, and the `orun`
-  CLI **≥ v2.58.11** — the floor for RUNNING the bootstrap (the phase overlay,
-  landings that commit per phase and wait on the PR's whole CI run,
-  `githubOwner` on the doctor probe, a probe deferred for a project not yet
-  created, and `from: workspace`). The product's own `ci.yml` pins its lanes
+  CLI **≥ v2.88.0** — the floor for RUNNING the bootstrap (the phase overlay,
+  landings that commit per phase, `githubOwner` on the doctor probe, a probe
+  deferred for a project not yet created, `from: workspace`, the deploy
+  credentials minted in one `secrets` reconcile, the task set-up run in the
+  background (`background: true`), and landings checked in the box before
+  they merge (`checks: local`)). The product's own `ci.yml` pins its lanes
   separately (v2.78.4).
 - A Cloudflare account (the Worker's bundle is about 550 KiB gzipped, inside
   the free plan's size limit) and its **Account API token** with Workers
@@ -81,8 +87,8 @@ phase whose files are present but branded derives as `drifted`, and
 
 | phase | what it lands | verified by |
 |---|---|---|
-| `01-product` | the repository, created and linked; the brokered Cloudflare secrets; then ONE pull request with everything — intent, CI, tooling, identity, `apps/recipes`, `tests/recipes` | its PR's checks green, merged; the convergence green (structure check, build, typecheck, deploy, smoke on stage and prod); both workers.dev URLs answering |
-| `02-docs` | `ai/context/deployment.md` from probed facts; prod's promotion gate and dev's push lanes restored | the final probe |
+| `01-product` | the repository, created and linked; the brokered Cloudflare secrets; then ONE pull request with everything — intent, CI, tooling, identity, `apps/recipes`, `tests/recipes` | its commit validated and planned in the box (as the PR and as the merge), then merged; the convergence green (structure check, build, typecheck, deploy, smoke on stage and prod); both workers.dev URLs answering |
+| `02-docs` | `ai/context/deployment.md` from probed facts; prod's promotion gate and dev's push lanes restored | the render's own probes, recorded; the commit checked in the box and merged |
 
 ```bash
 orun new --blueprint repo-blueprint.yaml --out ~/products/acme-recipes --run-hooks \
@@ -174,11 +180,15 @@ bash testing/e2e.test.sh         # + network for pnpm: the product built, dry-de
 The offline bootstrap (`testing/lib/bootstrap.sh`) places both phases in
 order and finishes each with the blueprint's OWN `run:` hooks — read out of
 `repo-blueprint.yaml`, not transcribed — so the retouch marker, the rebrand,
-the re-tenant, the work-tree strip, the deferrals and their restore, the
-lockfile and the deployment record all run exactly as a real bootstrap runs
-them. Only the platform's typed actions (task, repo, link, land, watch,
-probe, reconcile) are stood in for, a landing becoming a commit. The e2e
-then runs the stage lane's steps exactly as the product's pull-request plan
+the re-tenant, the work-tree strip, the deferrals and their restore and the
+deployment record all run exactly as a real bootstrap runs them. Only the
+platform's typed actions (task, repo, link, land, watch, probe, reconcile)
+are stood in for, a landing becoming a commit. The e2e then runs the
+landing's own checks — install, the fixture render, typecheck, lint, test,
+build. This is where the lint and the tests run before a tag: a product's
+pull request runs `ci.yml`'s verify lanes, which build, type-check and
+dry-deploy the Worker but neither lint nor test it. Then it runs the stage
+lane's steps exactly as the product's pull-request plan
 renders them — the structure check included — in the job tree orun stages,
 and serves the Worker with `wrangler dev`.
 
@@ -207,10 +217,12 @@ at the tag and refuses the whole catalogue if it 404s.
 | `01-product` stops at `link` | the repository is not linked to the workspace and the credential cannot link it. Allow-list it (console → Settings → Git repos) and re-run the phase |
 | Secret WRITE fails `not_found` while listings work | the API key's role is below admin; re-mint it with the admin role |
 | Deploy lane: Authentication error (10000) | the connection's token lacks Workers Scripts Write; re-issue it, re-connect, re-run `01-product` |
+| `land` stops: `the landing's own check failed — orun plan for …` | the product's tree does not plan — the line after it is orun's own error (an unknown component type, a composition that does not resolve). Nothing was pushed. Fix the tree (or the baseline) and re-run the phase |
+| `land` waits on CI after all | the product's repository requires a status check on `main` (branch protection or a ruleset), so GitHub refused the early merge; the landing waits for the check as a `checks: ci` landing would, then merges |
 | Convergence failed AFTER the PR merged; re-running lands nothing | expected on its own — the files are on main. Re-run the phase (`--phase 01-product`, `--redo 01-product`, or the console's Retry): its `retouch` hook gives the landing a diff and the Worker redeploys |
 | The product's `intent.yaml` says `workspace: ws_SET_ME` | `orunWorkspace` was empty and the build ran outside a workspace; set it and re-run `01-product` |
 | A bootstrap stopped before `02-docs`; prod no longer waits on stage | the gate is deferred, not dropped: run `02-docs`, or `node tooling/bootstrap/promotion.mjs --restore --file <product>/intent.yaml` |
 | `/basic-auth-password` answers 503 on the live product | expected until the owner sets the pair (§3) |
 | `✕ input "productname" is required` | all three required inputs (`reponame`, `productname`, `githuborg`) must be set on every invocation, single-phase ones included |
-| `unknown flag: --phase` or a parse error in the blueprint | the CLI is below the v2.58.11 floor |
-| The convergence reported green, then `verify` got 404 from both URLs | a second workflow ran on the push to main and the watch took its run. Only `ci.yml` runs on a push to main (`checks.yml` is pull-request only); read the CI run on main for the real result |
+| `unknown flag: --phase`, `has no parameter "checks"`, `has no parameter "secrets"` or another parse error in the blueprint | the CLI is below the v2.88.0 floor |
+| The convergence reported green, then `verify` got 404 from both URLs | a second workflow ran on the push to main and the watch took its run. Only `ci.yml` may run on a push to main, and a product carries no other workflow, so a workflow added on push is the cause; read the CI run on main for the real result |
