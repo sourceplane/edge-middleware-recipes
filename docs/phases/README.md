@@ -8,11 +8,15 @@ one at a time with `--phase <name>`, or the whole sequence unattended with
 is a selection on one artifact, which is what makes running one alone, months
 later, from a fresh container the same operation as running them all.
 
-Each phase follows the same contract:
+The product phase follows the contract every deploying phase does:
 
-> **place its modules → brand them → land them as one pull request → watch
-> the convergence that merge triggers (auto-resumed) → verify the outcome
-> over HTTP.**
+> **place its modules → brand them → check them in the box and land them as
+> one pull request → watch the convergence that merge triggers
+> (auto-resumed) → verify the outcome over HTTP.**
+
+The run's task set-up — the epic, a milestone per phase, a task per landing
+— runs in the background from the start; the first hook that needs it, the
+phase's `task`, waits for it.
 
 Run from the baseline checkout (the blueprint's source is `path: .`); the
 product's repository is wherever `--out` points.
@@ -24,11 +28,17 @@ states it in the document: the engine refuses a phase whose predecessor is not
 placed, and names it.
 
 Every landing is a pull request on a branch named for its task
-(`orun/BASE-<n>-<phase>`). On those branches `ci.yml` runs `plan` only — the
-intent, every component and every composition resolve — and skips the lanes,
+(`orun/BASE-<n>-<phase>`), checked before it is pushed: `orun validate`, then
+`orun plan` as the pull request and as the merge would plan it, in the box,
+in under a second (`checks: local`). Then it merges; nothing waits for the
+PR's CI. On those branches `ci.yml` runs `plan` only and skips the lanes,
 because the merge runs them on main a minute later, for real, and that
-convergence is what `01-product` watches. `checks.yml` (install, typecheck,
-lint, test, build) runs on every pull request regardless.
+convergence is what `01-product` watches. The product carries no other
+workflow: the baseline's own CI (Tier 2) installs, renders the fixtures,
+type-checks, lints, tests and builds this landing before a tag is cut. A
+later pull request in the product runs `ci.yml`'s verify lanes, which build,
+type-check and dry-deploy the Worker; they do not lint or run the tests, so
+its developers run those before a push.
 
 | phase | lands | verified by |
 |---|---|---|
@@ -45,7 +55,9 @@ the code changes with it; the repository names the domain only in
 There is no infra either: the Worker's bindings are vars, a rate limiting
 binding `wrangler deploy` creates, and owner-seeded secrets. Nothing is
 provisioned before the Worker, nothing lease-publishes a `WIRING_*` secret,
-and `01-product`'s await has no secrets check.
+and `01-product`'s await has no secrets check. `02-docs` awaits nothing: its
+render probes every URL as it writes the record, and its landing redeploys
+nothing.
 
 ## Inputs
 
@@ -103,21 +115,27 @@ lands, its `post` hooks make them the product's:
    side, and dev stays off main, until `02-docs` puts both back).
 4. `git-restage`, `rebrand --verify` — a sweep that fails on any of this
    baseline's identity left behind.
-5. `pnpm install --lockfile-only` — confirms the complete lockfile
-   `root-pnpm-lock` placed.
-6. `orun.repo/ensure@v1`, then `link` — the repository exists and is the
+5. `orun.repo/ensure@v1`, then `link` — the repository exists and is the
    workspace's before anything lands in it.
-7. `orun.integrations/reconcile@v1`, once per brokered key —
-   `CLOUDFLARE_API_TOKEN` (`workers-deploy`) and `CLOUDFLARE_ACCOUNT_ID`
-   (`account-id`).
-8. `orun.pr/land@v1` — the one pull request, merged once its checks are green.
+6. `secrets` — one `orun.integrations/reconcile@v1` for both brokered keys,
+   created side by side: `CLOUDFLARE_API_TOKEN` (`workers-deploy`) and
+   `CLOUDFLARE_ACCOUNT_ID` (`account-id`).
+7. `task` — the phase's task found (waiting, if it must, for the background
+   set-up), and its key.
+8. `orun.pr/land@v1` — the one pull request, its commit checked in the box
+   (`checks: local`) and merged.
+
+The baseline's complete lockfile ships as it is: it carries no identity, and
+the lanes install it with `--frozen-lockfile`, as the baseline's own CI does
+on this exact tree before a tag.
 
 `testing/phases.test.sh` holds this order.
 
 ## When a phase fails
 
 - **Before it lands** (a probe that timed out, a rebrand residue, a refused
-  link): nothing was merged. Fix what the message names and re-run the phase.
+  link, a tree the landing's own `orun plan` refuses): nothing was merged.
+  Fix what the message names and re-run the phase.
 - **After it lands** (the convergence went red): the files are on main.
   `orun.run/watch@v1` has already resumed the run up to three times. Re-run
   the phase (`--phase 01-product`, `--redo 01-product` under `--resume`, or

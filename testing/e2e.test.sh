@@ -4,12 +4,17 @@
 # placement.test.sh proves the tree a bootstrap ends with is the right tree.
 # This proves it WORKS, by doing to it what its own pipelines will:
 #
-#   1. at the 01-product landing (the commit its one pull request merges), run
-#      what `checks.yml` runs on that PR — install with the placed lockfile,
-#      render fixtures, typecheck, lint, test, build — read out of the
-#      workflow the product carries. That landing WAITS on its checks, so a
-#      product they refuse is a bootstrap that never lands. 02-docs, the only
-#      later landing, must touch nothing those checks read;
+#   1. at the 01-product landing (the commit its one pull request merges),
+#      the landing's own checks — install with the lockfile the product
+#      ships, render fixtures, typecheck, lint, test, build. The landing is
+#      checked in the box with `orun validate` and `orun plan` alone
+#      (`checks: local`; its PR's CI on an `orun/BASE-*` branch is `plan`
+#      alone), and a later pull request of the product runs ci.yml's verify
+#      lanes, which build, type-check and dry-deploy the Worker but neither
+#      lint nor test it — so THIS is where a product those steps refuse is
+#      caught: before the tag, not after a build has merged it. 02-docs, the
+#      only later landing, must touch nothing those checks read, so the
+#      finished product passes them too;
 #   2. the stage lane's own steps, EXACTLY as the product's `orun plan` for
 #      that pull request renders them (the PR-trigger plan: `deploy-dry-run`
 #      is not in the deploy profile, so it is the plan that carries every
@@ -41,7 +46,8 @@
 #
 # Needs: orun, node, pnpm, python3 (+PyYAML), git, curl, setsid, and the
 # network for `pnpm install` (or a warm store). A few minutes: two installs
-# and two Worker bundles.
+# and two Worker bundles (the landing's checks over the product, and the
+# stage lane's own in its staged tree).
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(cd "$here/.." && pwd)"
@@ -76,24 +82,26 @@ values="$here/fixtures/acme.json"
 repo="$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['reponame'])" "$values")"
 export CI=1 WRANGLER_SEND_METRICS=false TURBO_TELEMETRY_DISABLED=1
 
-# What checks.yml runs, step for step, read out of the workflow the product
-# carries so the two cannot drift: every `run:` of its one job, in order.
+# The landing's own checks, step for step, run here at once on the whole
+# tree. A pull request in the product builds, type-checks and dry-deploys the
+# Worker through ci.yml's lanes; the lint and the tests run here, and by hand
+# before a push.
+LANDING_CHECKS=(
+  "pnpm install --frozen-lockfile"
+  "pnpm run wire:fixture"
+  "pnpm typecheck"
+  "pnpm lint"
+  "pnpm test"
+  "pnpm build"
+)
 checks() { # DIR LOG
   local dir="$1" log="$2" cmd
-  while IFS= read -r cmd; do
+  for cmd in "${LANDING_CHECKS[@]}"; do
     echo "   \$ $cmd" | tee -a "$log"
     if ! (cd "$dir" && bash -c "$cmd") >> "$log" 2>&1; then
       echo "FAIL: \`$cmd\` failed in $dir" >&2; tail -40 "$log" >&2; return 1
     fi
-  done < <(python3 - "$dir/.github/workflows/checks.yml" <<'PY'
-import sys, yaml
-wf = yaml.safe_load(open(sys.argv[1]))
-for job in wf["jobs"].values():
-    for step in job["steps"]:
-        if "run" in step:
-            print(step["run"].strip())
-PY
-)
+  done
 }
 
 # A free port for each wrangler dev, so a run never collides with another
@@ -123,7 +131,7 @@ echo "   2 phases placed and landed"
 s01="$(git -C "$tree" rev-parse HEAD~1)"
 
 # ── 1. the product's own pull request ──────────────────────────────────────
-echo "── 01-product's landing, under the checks its PR waits on"
+echo "── 01-product's landing: install, the fixture render, typecheck, lint, test, build"
 git -C "$tree" worktree add -q "$scratch/at-01" "$s01"
 checks "$scratch/at-01" "$scratch/checks-01.log"
 later="$(git -C "$tree" diff --name-only "$s01" HEAD)"

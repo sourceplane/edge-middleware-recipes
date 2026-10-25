@@ -84,7 +84,7 @@ for p in placed:
 # ── the product's README, not this repository's ───────────────────────────
 if "README.md" not in placed:
     bad("README.md would not ship")
-for must in (".github/workflows/ci.yml", ".github/workflows/checks.yml",
+for must in (".github/workflows/ci.yml",
              "apps/recipes/component.yaml", "apps/recipes/src/site.ts",
              "apps/recipes/wrangler.jsonc", "apps/recipes/.dev.vars.example",
              "tests/recipes/component.yaml", "tests/recipes/src/site.test.ts",

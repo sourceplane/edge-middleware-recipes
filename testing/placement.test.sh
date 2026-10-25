@@ -13,7 +13,7 @@
 #      order, `02-docs` onto what `01-product` landed, each finished by the
 #      blueprint's OWN `run:` hooks (the retouch marker, the rebrand, the
 #      re-tenant, the work-tree strip, the deferrals and their restore, the
-#      lockfile, the deployment record), each landing a commit;
+#      deployment record), each landing a commit;
 #   3. the product it ends with: branded with no residue, carrying nothing of
 #      the factory — no factory file, and no shipped file that names one —
 #      re-tenanted, its gates restored, its record rendered;
@@ -29,9 +29,8 @@
 # testing/e2e.test.sh goes on from here: it installs, builds, dry-deploys and
 # serves the product and runs its smoke against it.
 #
-# Needs: orun, node, pnpm, python3 (+PyYAML), git. No credential. The pnpm
-# lockfile check and the deployment-record probes reach the network if they
-# can, and pass without it.
+# Needs: orun, node, pnpm, python3 (+PyYAML), git. No credential. The
+# deployment-record probes reach the network if they can, and pass without it.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(cd "$here/.." && pwd)"

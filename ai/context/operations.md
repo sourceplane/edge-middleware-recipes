@@ -1,7 +1,7 @@
 # edge-middleware-recipes — operating contract (for humans and agents)
 
 This is the standing guide to how this product is deployed and operated.
-Instance facts (live URLs, workspace, secrets inventory) live in
+Instance facts (live URLs, workspace, the secrets it uses) live in
 [deployment.md](deployment.md), rendered from probed reality by the
 bootstrap's `02-docs` phase; this file is the contract that stays true
 between deployments. It is written to give an agent with repository read
@@ -21,8 +21,9 @@ component-native desired-state repo.
   product's name and source link are `src/site.ts`. Bundled by wrangler's
   esbuild; no build step beyond it, no static assets, no database.
 - **`tests/recipes`** — one vitest file per recipe, driving the Worker
-  in-process through `app.request()`; verified on the `dev` rung and by
-  `checks.yml` on every pull request.
+  in-process through `app.request()`. A pull request's lanes do not run
+  them (its `dev` lane installs the package and checks its structure), nor
+  the linter: run `pnpm test` and `pnpm lint` before you push.
 - **`tooling/*`** — shared TypeScript and ESLint configuration, and the
   deploy-time wrangler renderer for workers that take wiring (this one does
   not: its `wrangler.jsonc` is committed).

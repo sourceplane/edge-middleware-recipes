@@ -1,8 +1,9 @@
 # 01-product — the product, in one landing
 
-**Places** every module: the root manifests, CI (`ci.yml`, `checks.yml`),
-tooling, the identity file, the two context pages, `apps/recipes` (the
-Worker of recipes and its deploy contract) and `tests/recipes` (vitest). Then
+**Places** every module: the root manifests, CI (`ci.yml` — the baseline's
+own `baseline.yml` and `tag.yml` are ignored), tooling, the identity file,
+the two context pages, `apps/recipes` (the Worker of recipes and its deploy
+contract) and `tests/recipes` (vitest). Then
 it creates the repository, lands all of it as ONE pull request, and watches
 the ONE convergence that merge triggers deploy the Worker to stage and prod.
 
@@ -14,9 +15,12 @@ it waits.
 
 ## What runs
 
+The run's task set-up — the epic, both milestones, both tasks — runs in the
+background from the start (`background: true`), so every hook up to `task`
+runs beside it; `task` is the first that waits for it.
+
 | hook | what it does |
 |---|---|
-| `task` (pre) | finds the phase's task and yields its key |
 | `retouch` | the redeploy marker on `apps/recipes/component.yaml` and `tests/recipes/component.yaml` (`.baseline/tasks/01-product.TaskContract.yaml`'s `affects`) |
 | `git-init`, `git-stage` | the tree becomes a repository with a populated index (`rebrand` reads `git ls-files`) |
 | `rebrand` | the identity rename: the repo slug, `SITE_NAME` and `SOURCE_URL` in `apps/recipes/src/site.ts`, the Worker name `<reponame>-recipes`, the domain, the workers.dev subdomain, the runtime secrets' refs |
@@ -24,12 +28,12 @@ it waits.
 | `work-tree` | strips the baseline's `work:` block from `intent.yaml` |
 | `promotion`, `dev-lanes` | defer prod's wait on stage and dev's push activation until `02-docs` |
 | `git-restage`, `rebrand-verify` | the residue sweep over the rewritten tree |
-| `pnpm-lockfile` | confirms the complete lockfile (`--lockfile-only`) |
 | `repo` | `orun.repo/ensure@v1` — creates `<githuborg>/<reponame>` (pre-created is supported) |
 | `link` | links the repository to the workspace, best effort, and stops naming the fix if `orun cloud check` says it is not |
-| `secret-workers-deploy`, `secret-account-id` | `orun.integrations/reconcile@v1` — `CLOUDFLARE_API_TOKEN` (`workers-deploy`) and `CLOUDFLARE_ACCOUNT_ID` (`account-id`), brokered; keys that exist are kept |
-| `land` | one PR, merged once its CI is green (Checks, and `plan` — the lanes are skipped on a bootstrap branch) |
-| `converge` (await) | `orun.run/watch@v1` on the merge commit's run (only `ci.yml` runs on a push to main); resumes it up to three times |
+| `secrets` | `orun.integrations/reconcile@v1`, both keys in one hook, created side by side: `CLOUDFLARE_API_TOKEN` from the `workers-deploy` template (Workers Scripts, the Worker's deploy); `CLOUDFLARE_ACCOUNT_ID`, the connection fact; keys that exist are kept |
+| `task` | finds the phase's task (opened by the run-level list) and yields its key — waiting, if it must, for the background set-up |
+| `land` | one PR bound to the task, its commit checked in the box first (`checks: local`: `orun validate`, then `orun plan` as the PR and as the merge would plan it, under a second); merged without waiting for the PR's CI |
+| `converge` (await) | `orun.run/watch@v1` on the merge commit's run (only `ci.yml` runs on a push to main), read every 5 s; resumes it up to three times |
 | `verify` (await) | `orun.http/probe@v1` on both workers.dev URLs |
 
 There is no `orun.secrets/exists@v1` in the await: no infra component, so no
@@ -58,6 +62,14 @@ deploy lane:
    `{"message":"hello world!"}`, retried with backoff for workers.dev
    propagation.
 
+`recipes-tests` verifies on dev only, on a pull request, and there its lane
+installs and checks the package's structure; it does not run the tests. The
+landing's own pull request runs `plan` alone, and nothing waits for it — the
+same plan ran in the box before the push. The baseline's own CI ran the
+typecheck, lint and tests on this exact tree before the tag was cut; in the
+product they are `pnpm typecheck`, `pnpm lint` and `pnpm test`, run before a
+push.
+
 ## Verified
 
 The convergence run for the merge commit is green, and
@@ -74,5 +86,6 @@ The convergence run for the merge commit is green, and
 | deploy lane: Authentication error (10000) | the connection's token lacks Workers Scripts Write. Re-issue it with the permission groups the console's Connect recipe lists |
 | smoke fails right after the FIRST deploy | workers.dev route propagation; the composition retries the first deploy and the smoke with backoff (stack-tectonic ≥ 0.19.0). A convergence resume clears what is left |
 | the watch says green, the probe says 404 | another workflow ran on the push and the watch took its run. Only `ci.yml` may run on a push to main |
+| `land`: `the landing's own check failed — orun plan for …` | the placed tree does not plan; the next line is orun's error. Nothing was pushed. Fix it and re-run the phase |
 | `/basic-auth-password` answers 503 | expected on a fresh product: its owner has not set `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD` (the product README, "Secrets") |
 | re-run lands nothing | the hooks did not run (`--run-hooks`), or the contract names no component — `node tooling/bootstrap/retouch.mjs --check --affects .baseline/tasks/01-product.TaskContract.yaml` in the product's tree says which |
