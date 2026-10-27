@@ -107,6 +107,14 @@ creates its namespace from `wrangler.jsonc` (one `namespace_id` per
 environment — account-wide, so give another product in the same account its
 own ids).
 
+**Deploy by hand.** Orunbase's **Deploy** button on a component, or **Run
+workflow** on the CI workflow in GitHub's Actions tab (on `main`), runs
+`ci.yml` for the environment and components you pick, and each one deploys
+exactly as a merge would deploy it. Leave the component blank to redeploy
+every component in that environment, with nothing changed: after rotating a
+secret, say. A component with nothing to run in that environment (a test
+suite in `prod`) is left out with a notice.
+
 ## Secrets
 
 Every recipe but one works on a fresh deploy with no secret at all. The
