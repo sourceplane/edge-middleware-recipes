@@ -117,6 +117,7 @@ orun integrations list --org <ws> --json && orun cloud check --org <ws>
 | change a recipe | edit `apps/recipes/src/recipes/<name>.ts` and its test in `tests/recipes/src/`, merge |
 | add a recipe | a module in `apps/recipes/src/recipes/` exporting a Hono app on its own base path and a `meta` entry, registered in `src/recipes/index.ts` |
 | deploy a change | merge to `main`; watch the run; failed lanes → `gh run rerun --failed` |
+| deploy by hand | Orunbase's Deploy button, or `gh workflow run ci.yml --ref main -f environment=<env> [-f component=<a,b>]` — the named components (blank: every one) run in that environment as a merge runs them; started off `main` it is refused |
 | redeploy without a change | edit the last line of `apps/recipes/component.yaml` (`# orun: redeploy <reason> <stamp>`) and merge — it is a deploy trigger, nothing reads it |
 | turn on basic auth | `orun secrets set BASIC_AUTH_USER --env <env>` and `BASIC_AUTH_PASSWORD`, then redeploy (above) |
 | flip maintenance mode | `MAINTENANCE_MODE` in the environment's `vars` in `apps/recipes/wrangler.jsonc`, merge (a flag that must flip without a deploy belongs in a KV namespace) |
