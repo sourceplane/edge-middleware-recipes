@@ -130,3 +130,16 @@ that has none of it. The tests stand that base in with an empty commit, which
 makes every component "changed" — what the real first push plans. A
 bootstrap that finds a pre-created repository with commits of its own plans
 the same set, because none of them touch the product's paths.
+
+## EM-N — Keeping the baseline's name left the secret refs unlinked (RESOLVED)
+
+A console build on 2026-11-11 (`vijayakrishnans/edge-middleware-recipes`, run
+43017066479) kept the baseline's own name as its repo name. The rebrand holds
+every value it has already written before its rules run, so a second pass
+cannot rewrite it; with `reponame` equal to the baseline slug, that held the
+project half of `secret://ws_CHANGE_ME/edge-middleware-recipes/…` too, and the
+secret-ref rule could no longer match. The workspace segment stayed
+`ws_CHANGE_ME`, and both deploy lanes failed secret resolution before their
+first step. The secret-ref rewrite now runs before the guard (it is
+idempotent), and `testing/rebrand.test.sh` covers a product that keeps the
+baseline's name, over three passes.

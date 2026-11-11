@@ -101,6 +101,11 @@ check "…and without a workspace, the repo name stands in for it" \
   '{"reponame":"acme-recipes","productname":"Acme Recipes","productdomain":"acme.dev"}' apps/recipes/component.yaml \
   '    BASIC_AUTH_USER: "secret://ws_CHANGE_ME/edge-middleware-recipes/{{ .environment }}/BASIC_AUTH_USER"' \
   '    BASIC_AUTH_USER: "secret://acme-recipes/acme-recipes/{{ .environment }}/BASIC_AUTH_USER"'
+check "…and when the product keeps the baseline's own name, three passes" \
+  '{"reponame":"edge-middleware-recipes","productname":"Edge Middleware Recipes","productdomain":"","subdomain":"acme","orunWorkspace":"org_d783d928db2c4e8aa57e401dd5228458"}' \
+  apps/recipes/component.yaml \
+  '    BASIC_AUTH_USER: "secret://ws_CHANGE_ME/edge-middleware-recipes/{{ .environment }}/BASIC_AUTH_USER"' \
+  '    BASIC_AUTH_USER: "secret://org_d783d928db2c4e8aa57e401dd5228458/edge-middleware-recipes/{{ .environment }}/BASIC_AUTH_USER"' 3
 check "the @app package scope is not identity" \
   "$acme" apps/recipes/package.json '  "name": "@app/recipes",' \
   '  "name": "@app/recipes",'

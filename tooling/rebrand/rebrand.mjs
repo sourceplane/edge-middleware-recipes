@@ -271,6 +271,20 @@ function literalPairs() {
   ];
 }
 
+// Secret refs: `secret://<workspace>/<project>/…`. The workspace segment is
+// ANY segment — a ws_… id, a slug or the `ws_CHANGE_ME` placeholder. This
+// rule runs BEFORE the guard below, not with the other regexes: when the
+// product keeps the baseline's own name (reponame === baseline.slug), the
+// guard holds every bare `<slug>`, the project half of the ref included, and a
+// rule that runs after it can never match — the workspace segment stayed
+// `ws_CHANGE_ME` and every deploy failed secret resolution. Rewriting to the
+// same target is idempotent, so a later phase's pass leaves it as written.
+const SECRET_REF = {
+  re: new RegExp(`\\bsecret://[A-Za-z0-9_-]+/${rx(baseline.slug)}/`, "g"),
+  replacement: () => `secret://${orunWorkspaceSlug}/${reponame}/`,
+  label: "secret ref workspace/project",
+};
+
 function regexPairs(files) {
   const list = [
     // The display-name seam. JSON.stringify writes a valid TS string for any
@@ -279,14 +293,6 @@ function regexPairs(files) {
       re: new RegExp(`SITE_NAME = "${rx(baseline.productName)}"`, "g"),
       replacement: () => `SITE_NAME = ${JSON.stringify(productname)}`,
       label: "site name seam",
-    },
-    // Secret refs: `secret://<workspace>/<project>/…`. MUST precede the
-    // repo-slug pass, which would otherwise rewrite only the project half. The
-    // workspace segment is ANY segment — a ws_… id or a slug.
-    {
-      re: new RegExp(`\\bsecret://[A-Za-z0-9_-]+/${rx(baseline.slug)}/`, "g"),
-      replacement: () => `secret://${orunWorkspaceSlug}/${reponame}/`,
-      label: "secret ref workspace/project",
     },
   ];
 
@@ -420,6 +426,14 @@ for (const file of files) {
       masks.push([token, m]);
       return token;
     });
+  });
+
+  // Before the guard (see SECRET_REF). Counted only where it changes the text,
+  // so a re-run over an already-correct ref reports nothing.
+  text = text.replace(SECRET_REF.re, (m) => {
+    const to = SECRET_REF.replacement();
+    if (m !== to) count(SECRET_REF.label);
+    return hold(to);
   });
 
   // What a previous pass already wrote stays as written.
